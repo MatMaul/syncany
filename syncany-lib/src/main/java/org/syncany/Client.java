@@ -21,17 +21,17 @@ import java.io.InputStream;
 import java.util.Properties;
 
 import org.syncany.config.Config;
+import org.syncany.operations.AbstractInitOperation.InitOperationListener;
 import org.syncany.operations.ChangeSet;
 import org.syncany.operations.ConnectOperation;
-import org.syncany.operations.ConnectOperation.ConnectOperationListener;
 import org.syncany.operations.ConnectOperation.ConnectOperationOptions;
 import org.syncany.operations.ConnectOperation.ConnectOperationResult;
 import org.syncany.operations.DownOperation;
 import org.syncany.operations.DownOperation.DownOperationOptions;
 import org.syncany.operations.DownOperation.DownOperationResult;
+import org.syncany.operations.GenlinkOperation;
 import org.syncany.operations.GenlinkOperation.GenlinkOperationResult;
 import org.syncany.operations.InitOperation;
-import org.syncany.operations.InitOperation.InitOperationListener;
 import org.syncany.operations.InitOperation.InitOperationOptions;
 import org.syncany.operations.InitOperation.InitOperationResult;
 import org.syncany.operations.LogOperation;
@@ -39,7 +39,6 @@ import org.syncany.operations.LogOperation.LogOperationOptions;
 import org.syncany.operations.LogOperation.LogOperationResult;
 import org.syncany.operations.LsRemoteOperation;
 import org.syncany.operations.LsRemoteOperation.LsRemoteOperationResult;
-import org.syncany.operations.GenlinkOperation;
 import org.syncany.operations.Operation;
 import org.syncany.operations.OperationOptions;
 import org.syncany.operations.OperationResult;
@@ -178,7 +177,7 @@ public class Client {
 		return connect(options, null);
 	}
 	
-	public ConnectOperationResult connect(ConnectOperationOptions options, ConnectOperationListener listener) throws Exception {
+	public ConnectOperationResult connect(ConnectOperationOptions options, InitOperationListener listener) throws Exception {
         return new ConnectOperation(options, listener).execute();                
 	}
 }

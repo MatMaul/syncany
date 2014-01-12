@@ -433,7 +433,7 @@ public class DownOperation extends Operation {
 			if (databaseFileForRange != null) {
 				// Load database
 				logger.log(Level.INFO, "- Loading " + databaseFileForRange + " (from " + clientVersionFrom + ", to " + clientVersionTo + ") ...");
-				databaseDAO.load(winnerBranchDatabase, databaseFileForRange, clientVersionFrom, clientVersionTo);
+				databaseDAO.load(winnerBranchDatabase, databaseFileForRange, config.getVerifyKey(), clientVersionFrom, clientVersionTo);
 
 				// Reset range
 				clientName = null;
@@ -459,7 +459,7 @@ public class DownOperation extends Operation {
 			Database remoteDatabase = new Database(); // Database cannot be reused, since these might be different clients
 
 			DatabaseRemoteFile remoteDatabaseFile = new DatabaseRemoteFile(remoteDatabaseFileInCache.getName());
-			dbDAO.load(remoteDatabase, remoteDatabaseFileInCache, true); // only load headers!
+			dbDAO.load(remoteDatabase, remoteDatabaseFileInCache, config.getVerifyKey(), true); // only load headers!
 			List<DatabaseVersion> remoteDatabaseVersions = remoteDatabase.getDatabaseVersions();
 
 			// Populate branches

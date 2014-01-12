@@ -26,7 +26,6 @@ import org.apache.commons.io.FileUtils;
 import org.simpleframework.xml.Serializer;
 import org.simpleframework.xml.core.Persister;
 import org.syncany.config.Config;
-import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.MasterTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.connection.plugins.MasterRemoteFile;
@@ -34,7 +33,7 @@ import org.syncany.connection.plugins.RemoteFile;
 import org.syncany.connection.plugins.RepoRemoteFile;
 import org.syncany.connection.plugins.TransferManager;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 
 /**
  * The connect operation connects to an existing repository at a given remote storage
@@ -55,15 +54,10 @@ import org.syncany.crypto.SaltedSecretKey;
 public class ConnectOperation extends AbstractInitOperation {
 	private static final Logger logger = Logger.getLogger(ConnectOperation.class.getSimpleName());		
 	
-	private ConnectOperationOptions options;
-	private ConnectOperationListener listener;
     private TransferManager transferManager;
 	
-	public ConnectOperation(ConnectOperationOptions options, ConnectOperationListener listener) {
-		super(null);
-		
-		this.options = options;
-		this.listener = listener;
+	public ConnectOperation(ConnectOperationOptions options, InitOperationListener listener) {
+		super(null, options, listener);
 	}		
 	
 	@Override
@@ -80,7 +74,7 @@ public class ConnectOperation extends AbstractInitOperation {
 		File tmpMasterFile = null;
 		
 		if (CipherUtil.isEncrypted(tmpRepoFile)) {
-			SaltedSecretKey masterKey = null;
+			MasterKey masterKey = null;
 			
 			if (options.getConfigTO().getMasterKey() != null) {
 				masterKey = options.getConfigTO().getMasterKey(); // TODO [medium] Also create master file! 
@@ -89,10 +83,8 @@ public class ConnectOperation extends AbstractInitOperation {
 				tmpMasterFile = downloadFile(transferManager, new MasterRemoteFile());
 				MasterTO masterTO = readMasterFile(tmpMasterFile);
 				
-				String masterKeyPassword = getOrAskPasswordRepoFile();
 				byte[] masterKeySalt = masterTO.getSalt();
-				
-				masterKey = createMasterKeyFromPassword(masterKeyPassword, masterKeySalt); // This takes looong!			
+				masterKey = getOrAskPasswordRepoFile(masterKeySalt);
 			}						
 			
 			String repoFileStr = decryptRepoFile(tmpRepoFile, masterKey);			
@@ -123,19 +115,6 @@ public class ConnectOperation extends AbstractInitOperation {
 		return new ConnectOperationResult();
 	}		
 
-	private String getOrAskPasswordRepoFile() throws Exception {
-		if (options.getPassword() == null) {
-			if (listener == null) {
-				throw new Exception("Repository file is encrypted, but password cannot be queried (no listener).");
-			}
-			
-			return listener.getPasswordCallback();
-		}
-		else {
-			return options.getPassword();
-		}		
-	}
-
 	protected File downloadFile(TransferManager transferManager, RemoteFile remoteFile) throws Exception {
 		File tmpRepoFile = File.createTempFile("syncanyfile", "tmp");
 		
@@ -148,16 +127,7 @@ public class ConnectOperation extends AbstractInitOperation {
 		}		
 	}
 	
-	private SaltedSecretKey createMasterKeyFromPassword(String masterPassword, byte[] masterKeySalt) throws Exception {
-		if (listener != null) {
-			listener.notifyCreateMasterKey();
-		}
-		
-		SaltedSecretKey masterKey = CipherUtil.createMasterKey(masterPassword, masterKeySalt);
-		return masterKey;
-	}
-	
-	private String decryptRepoFile(File file, SaltedSecretKey masterKey) throws Exception {
+	private String decryptRepoFile(File file, MasterKey masterKey) throws Exception {
 		try {
 			FileInputStream encryptedRepoConfig = new FileInputStream(file);
 			return new String(CipherUtil.decrypt(encryptedRepoConfig, masterKey));			
@@ -182,42 +152,11 @@ public class ConnectOperation extends AbstractInitOperation {
 		return serializer.read(MasterTO.class, tmpMasterFile);
 	}
 
-	public static interface ConnectOperationListener {
-		public String getPasswordCallback();
-		public void notifyCreateMasterKey();
-	}	
-	
-	public static class ConnectOperationOptions implements OperationOptions {
-		private File localDir;
-		private ConfigTO configTO;
-		private String password;
-		
-		public File getLocalDir() {
-			return localDir;
-		}
-
-		public void setLocalDir(File localDir) {
-			this.localDir = localDir;
-		}
-
-		public ConfigTO getConfigTO() {
-			return configTO;
-		}
-
-		public void setConfigTO(ConfigTO configTO) {
-			this.configTO = configTO;
-		}
-
-		public String getPassword() {
-			return password;
-		}
-
-		public void setPassword(String password) {
-			this.password = password;
-		}
-	}
-		 
     public static class ConnectOperationResult implements OperationResult {
         // Nothing		
+    }
+    
+    public static class ConnectOperationOptions extends AbstractInitOperationOptions {
+    	
     }
 }

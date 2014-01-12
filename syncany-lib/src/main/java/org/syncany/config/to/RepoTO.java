@@ -19,6 +19,8 @@ package org.syncany.config.to;
 
 import java.util.List;
 
+import org.abstractj.kalium.keys.SigningKey;
+import org.abstractj.kalium.keys.VerifyKey;
 import org.simpleframework.xml.Element;
 import org.simpleframework.xml.ElementList;
 import org.simpleframework.xml.Namespace;
@@ -56,6 +58,11 @@ public class RepoTO {
 	@ElementList(name="transformers", required=false, entry="transformer")
 	private List<TransformerTO> transformers;
 	
+	@Element(name="verifykey", required=false)
+	private String verifyKeyEncoded;
+	private byte[] verifyKeyBytes;
+	private VerifyKey verifyKey;
+	
 	public byte[] getRepoId() {
 		return repoId;
 	}
@@ -67,22 +74,45 @@ public class RepoTO {
 	@Persist
 	public void prepare() {
 		repoIdEncoded = (repoId != null) ? StringUtil.toHex(repoId) : null;
+		if (verifyKeyBytes != null) {
+			verifyKeyEncoded = StringUtil.toHex(verifyKeyBytes);
+		}
+		else {
+			verifyKeyEncoded = null;
+		}
 	}
 
 	@Complete
 	public void release() {
 		repoIdEncoded = null;
+		verifyKeyEncoded = null;
 	}
 	
 	@Commit
 	public void commit() {
 		repoId = (repoIdEncoded != null) ? StringUtil.fromHex(repoIdEncoded) : null;
+		verifyKeyBytes = null;
+		if (verifyKeyEncoded != null && !"".equals(verifyKeyEncoded)) {
+			verifyKeyBytes = StringUtil.fromHex(verifyKeyEncoded);
+			verifyKey = new VerifyKey(verifyKeyBytes);
+		} else {
+			verifyKeyBytes = null;
+			verifyKey = null;
+		}
+	}
+	
+	public void setVerifyKeyBytes(byte[] verifyKeyBytes) {
+		this.verifyKeyBytes = verifyKeyBytes;
+	}
+	
+	public VerifyKey getVerifyKey() {
+		return verifyKey;
 	}
 
 	public ChunkerTO getChunker() {
 		return chunker;
 	}
-
+	
 	public void setChunker(ChunkerTO chunker) {
 		this.chunker = chunker;
 	}
@@ -114,4 +144,10 @@ public class RepoTO {
 	public static class TransformerTO extends TypedPropertyListTO {
 		// Nothing special about this
 	} 
+	
+	public static SigningKey decodeSigningKey(String key) {
+		byte[] keyBytes = StringUtil.fromHex(key);
+		
+		return new SigningKey(keyBytes);
+	}
 }

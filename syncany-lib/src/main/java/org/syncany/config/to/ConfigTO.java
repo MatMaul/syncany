@@ -19,6 +19,7 @@ package org.syncany.config.to;
 
 import java.io.File;
 
+import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
 import org.simpleframework.xml.Element;
@@ -29,7 +30,7 @@ import org.simpleframework.xml.core.Complete;
 import org.simpleframework.xml.core.Persist;
 import org.simpleframework.xml.core.Persister;
 import org.syncany.config.Config.ConfigException;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.util.StringUtil;
 
 /**
@@ -52,11 +53,19 @@ public class ConfigTO {
 
 	@Element(name="displayname", required=false)
 	private String displayName; 
-	
-	@Element(name="masterkey", required=false)
-	private String masterKeyEncoded;
-	private SaltedSecretKey masterKey;
-	
+
+	@Element(name="encryptkey", required=false)
+	private String encryptKeyEncoded;
+
+	@Element(name="salt", required=false)
+	private String saltEncoded;
+
+	@Element(name="signingkey", required=false)
+	private String signingKeyEncoded;
+
+	private MasterKey masterKey;
+
+
 	@Element(name="connection", required=true)
 	private ConnectionTO connectionTO;
 
@@ -92,43 +101,58 @@ public class ConfigTO {
 	public void setConnection(ConnectionTO connectionTO) {
 		this.connectionTO = connectionTO;
 	}
-	
-	public SaltedSecretKey getMasterKey() {
+
+	public MasterKey getMasterKey() {
 		return masterKey;
 	}
 
-	public void setMasterKey(SaltedSecretKey masterKey) {
+	public void setMasterKey(MasterKey masterKey) {
 		this.masterKey = masterKey;
 	}
 
 	@Persist
 	public void prepare() {
 		if (masterKey != null) {
-			masterKeyEncoded = StringUtil.toHex(masterKey.getSalt())+"/"+StringUtil.toHex(masterKey.getEncoded());
+			encryptKeyEncoded = StringUtil.toHex(masterKey.getEncryptKey().getEncoded());
+			if (masterKey.getSigningKey() != null) {
+				signingKeyEncoded = StringUtil.toHex(masterKey.getSigningKey().getEncoded());
+			} else {
+				signingKeyEncoded = null;
+			}
+			saltEncoded = StringUtil.toHex(masterKey.getSalt());
 		}
 		else {
-			masterKeyEncoded = null;
+			encryptKeyEncoded = null;
+			signingKeyEncoded = null;
+			saltEncoded = null;
 		}
 	}
 
 	@Complete
 	public void release() {
-		masterKeyEncoded = null;
+		encryptKeyEncoded = null;
+		signingKeyEncoded = null;
+		saltEncoded = null;
 	}
-	
+
 	@Commit
 	public void commit() {
-		if (masterKeyEncoded != null && !"".equals(masterKeyEncoded)) {
-			String[] masterKeyEncodedParts = masterKeyEncoded.split("/");
-			
-			byte[] saltBytes = StringUtil.fromHex(masterKeyEncodedParts[0]);
-			byte[] masterKeyBytes = StringUtil.fromHex(masterKeyEncodedParts[1]);
-			
-			masterKey = new SaltedSecretKey(new SecretKeySpec(masterKeyBytes, "RAW"), saltBytes);
-		}
-		else {
+		if (encryptKeyEncoded != null && !"".equals(encryptKeyEncoded)) {
+			SecretKey signingKey = null;
+			if (signingKeyEncoded != null && !"".equals(signingKeyEncoded)) {
+				signingKey = decodeKey(signingKeyEncoded);
+			}
+			SecretKey encryptKey = decodeKey(encryptKeyEncoded);
+			masterKey = new MasterKey(encryptKey, StringUtil.fromHex(saltEncoded), signingKey);
+		} else {
 			masterKey = null;
 		}
+	}
+
+	private static SecretKey decodeKey(String key) {
+		byte[] keyBytes = StringUtil.fromHex(key);
+
+		return new SecretKeySpec(keyBytes, "RAW");
 	}
 
 	public static class ConnectionTO extends TypedPropertyListTO {

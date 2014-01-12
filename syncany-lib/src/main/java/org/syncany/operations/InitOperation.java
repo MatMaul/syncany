@@ -33,7 +33,7 @@ import org.syncany.connection.plugins.StorageException;
 import org.syncany.connection.plugins.TransferManager;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.operations.GenlinkOperation.GenlinkOperationResult;
 
 /**
@@ -56,14 +56,11 @@ import org.syncany.operations.GenlinkOperation.GenlinkOperationResult;
 public class InitOperation extends AbstractInitOperation {
     private static final Logger logger = Logger.getLogger(InitOperation.class.getSimpleName());        
     private InitOperationOptions options;
-    private InitOperationListener listener;
     private TransferManager transferManager;
     
     public InitOperation(InitOperationOptions options, InitOperationListener listener) {
-        super(null);
-        
+        super(null, options, listener);
         this.options = options;
-        this.listener = listener;
     }        
             
     @Override
@@ -86,8 +83,10 @@ public class InitOperation extends AbstractInitOperation {
 		
 		// Save config.xml and repo file		
 		if (options.isEncryptionEnabled()) {
-			SaltedSecretKey masterKey = createMasterKeyFromPassword(options.getPassword()); // This takes looong!			
+			MasterKey masterKey = createMasterKeyFromPasswords(options.getEncryptPassword(), options.getSignaturePassword(), null); // This takes looong!			
+			
 			options.getConfigTO().setMasterKey(masterKey);
+			options.getRepoTO().setVerifyKeyBytes(masterKey.calculateVerifyKeyBytes());
 			
 			writeXmlFile(new MasterTO(masterKey.getSalt()), masterFile);
 			writeEncryptedXmlFile(options.getRepoTO(), repoFile, options.getCipherSpecs(), masterKey);				
@@ -131,15 +130,6 @@ public class InitOperation extends AbstractInitOperation {
 		return new GenlinkOperation(options.getConfigTO()).execute();
 	}
 
-	private SaltedSecretKey createMasterKeyFromPassword(String masterPassword) throws Exception {
-		if (listener != null) {
-			listener.notifyGenerateMasterKey();
-		}
-		
-		SaltedSecretKey masterKey = CipherUtil.createMasterKey(masterPassword);
-		return masterKey;
-	}
-
 	protected boolean repoFileExistsOnRemoteStorage(TransferManager transferManager) throws Exception {
 		try {
 			Map<String, RepoRemoteFile> repoFileList = transferManager.list(RepoRemoteFile.class);			
@@ -158,34 +148,12 @@ public class InitOperation extends AbstractInitOperation {
 		transferManager.upload(repoFile, new RepoRemoteFile());
 	}    	
 	
-	public static interface InitOperationListener {
-		public void notifyGenerateMasterKey();
-	}	
- 
-    public static class InitOperationOptions implements OperationOptions {
-    	private File localDir;
-    	private ConfigTO configTO;
+    public static class InitOperationOptions extends AbstractInitOperationOptions {
+
     	private RepoTO repoTO;
     	private boolean encryptionEnabled;
     	private List<CipherSpec> cipherSpecs;
-    	private String password;
-		
-    	public File getLocalDir() {
-			return localDir;
-		}
-
-		public void setLocalDir(File localDir) {
-			this.localDir = localDir;
-		}
-
-		public ConfigTO getConfigTO() {
-			return configTO;
-		}
-		
-		public void setConfigTO(ConfigTO configTO) {
-			this.configTO = configTO;
-		}
-		
+    	
 		public RepoTO getRepoTO() {
 			return repoTO;
 		}
@@ -209,14 +177,6 @@ public class InitOperation extends AbstractInitOperation {
 		public void setCipherSpecs(List<CipherSpec> cipherSpecs) {
 			this.cipherSpecs = cipherSpecs;
 		}
-
-		public String getPassword() {
-			return password;
-		}
-
-		public void setPassword(String password) {
-			this.password = password;
-		}  						
     }
     
     public class InitOperationResult implements OperationResult {

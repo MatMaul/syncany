@@ -28,7 +28,7 @@ import org.syncany.config.Config.ConfigException;
 import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 
 /**
  * The config helper provides convenience functions to load the configuration from
@@ -89,14 +89,15 @@ public class ConfigHelper {
     private static RepoTO loadEncryptedRepoTO(File repoFile, ConfigTO configTO) throws Exception {
     	logger.log(Level.INFO, "Loading encrypted repo file from {0} ...", repoFile);				
 
-		SaltedSecretKey masterKey = configTO.getMasterKey();
+		MasterKey masterKey = configTO.getMasterKey();
 		
 		if (masterKey == null) {
 			throw new ConfigException("Repo file is encrypted, but master key not set in config file.");
 		}
 		
 		String repoFileStr = new String(CipherUtil.decrypt(new FileInputStream(repoFile), masterKey));
-		return new Persister().read(RepoTO.class, repoFileStr);
+		RepoTO repo = new Persister().read(RepoTO.class, repoFileStr);
+		return repo;
     }
     
     private static RepoTO loadPlaintextRepoTO(File repoFile, ConfigTO configTO) throws Exception {

@@ -156,8 +156,8 @@ public class TestAssertUtil {
 		
 		assertArrayEquals(message+": Actual file checksum ("+StringUtil.toHex(actualFileChecksum)+") and expected file checksum ("+StringUtil.toHex(expectedFileChecksum)+") do not match.", expectedFileChecksum, actualFileChecksum);
 		
-		FileProperties actualFileProperties = fileVersionComparator.captureFileProperties(actualFile, null, true);
-		FileProperties expectedFileProperties = fileVersionComparator.captureFileProperties(expectedFile, null, true);
+		FileProperties actualFileProperties = fileVersionComparator.captureFileProperties(actualFile, null, true, false, false);
+		FileProperties expectedFileProperties = fileVersionComparator.captureFileProperties(expectedFile, null, true, false, false);
 		
 		FileVersionComparison fileVersionComparison = fileVersionComparator.compare(expectedFileProperties, actualFileProperties, true);
 		

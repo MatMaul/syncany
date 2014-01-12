@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import org.abstractj.kalium.keys.VerifyKey;
 import org.syncany.chunk.Chunker;
 import org.syncany.chunk.CipherTransformer;
 import org.syncany.chunk.FixedChunker;
@@ -36,7 +37,7 @@ import org.syncany.connection.plugins.Connection;
 import org.syncany.connection.plugins.Plugin;
 import org.syncany.connection.plugins.Plugins;
 import org.syncany.connection.plugins.StorageException;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.util.FileUtil;
 import org.syncany.util.StringUtil;
 
@@ -68,7 +69,8 @@ public class Config {
 	private File databaseDir;
 	private File logDir;
 	
-	private SaltedSecretKey masterKey;
+	private MasterKey masterKey;
+	private VerifyKey verifyKey;
 
 	private Cache cache;	
 	private Connection connection;
@@ -83,6 +85,7 @@ public class Config {
 	public Config(File aLocalDir, ConfigTO configTO, RepoTO repoTO) throws ConfigException {		
 		initNames(configTO);
 		initMasterKey(configTO);
+		initVerifyKey(repoTO);
 		initDirectories(aLocalDir);
 		initCache();
 		initRepo(repoTO);
@@ -100,6 +103,10 @@ public class Config {
 	
 	private void initMasterKey(ConfigTO configTO) {
 		masterKey = configTO.getMasterKey(); // can be null			
+	}
+	
+	private void initVerifyKey(RepoTO repoTO) {
+		verifyKey = repoTO.getVerifyKey();		
 	}
 
 	private void initDirectories(File aLocalDir) throws ConfigException {
@@ -175,8 +182,8 @@ public class Config {
 				}
 				
 				if (transformer instanceof CipherTransformer) { // Dirty workaround
-					transformerTO.getSettings().put(CipherTransformer.PROPERTY_MASTER_KEY, StringUtil.toHex(getMasterKey().getEncoded()));
-					transformerTO.getSettings().put(CipherTransformer.PROPERTY_MASTER_KEY_SALT, StringUtil.toHex(getMasterKey().getSalt()));
+					transformerTO.getSettings().put(CipherTransformer.PROPERTY_ENCRYPT_KEY, StringUtil.toHex(getMasterKey().getEncryptKey().getEncoded()));
+					transformerTO.getSettings().put(CipherTransformer.PROPERTY_KEY_SALT, StringUtil.toHex(getMasterKey().getSalt()));
 				}
 				
 				transformer.init(transformerTO.getSettings());
@@ -299,12 +306,12 @@ public class Config {
 		return databaseDir;
 	}	
 
-	public SaltedSecretKey getMasterKey() {
+	public MasterKey getMasterKey() {
 		return masterKey;
 	}
-
-	public void setMasterKey(SaltedSecretKey masterKey) {
-		this.masterKey = masterKey;
+	
+	public VerifyKey getVerifyKey() {
+		return verifyKey;
 	}
 
 	public File getDatabaseFile() {

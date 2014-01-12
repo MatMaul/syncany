@@ -109,7 +109,6 @@ public class Indexer {
 		
 		// Find and remove deleted files
 		removeDeletedFiles(newDatabaseVersion);
-		
 		return newDatabaseVersion;
 	}
 	
@@ -333,6 +332,10 @@ public class Indexer {
 			
 			// Only add new version if it differs!			
 			if (newVersionDiffersFromToLastVersion) {
+				// only sign if really needed since it can be slow
+				if (config.getMasterKey() != null) {
+					fileVersion.generateSignature(config.getMasterKey());
+				}
 				fileHistory.addFileVersion(fileVersion);
 				newDatabaseVersion.addFileHistory(fileHistory);
 				

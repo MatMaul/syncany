@@ -18,8 +18,12 @@
 package org.syncany.database;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.Date;
 
+import org.abstractj.kalium.keys.VerifyKey;
+import org.bouncycastle.util.Arrays;
+import org.syncany.crypto.MasterKey;
 import org.syncany.database.FileContent.FileChecksum;
 
 /**
@@ -38,44 +42,76 @@ import org.syncany.database.FileContent.FileChecksum;
  */
 public class FileVersion implements Cloneable {
 	// Mandatory
-    private Long version; // TODO [low] This can be an Integer. No need for a long!
-    private String path;
-    private FileType type; 
-    private FileStatus status;    
-    private Long size; 
-    private Date lastModified;
+	private Long version; // TODO [low] This can be an Integer. No need for a long!
+	private String path;
+	private FileType type; 
+	private FileStatus status;    
+	private Long size; 
+	private Date lastModified;
 
-    // Mandatory (if type is symlink)
-    private String linkTarget;
-    
-    // Optional
-    private String createdBy;
-    private FileChecksum checksum;
-    private Date updated;
-    private String posixPermissions;
-    private String dosAttributes;
-    
-    public FileVersion() {
-        // Fressen.
-    }      
+	// Mandatory (if type is symlink)
+	private String linkTarget;
 
-    public String getCreatedBy() {
-        return createdBy;
-    }
+	// Optional
+	private String createdBy;
+	private FileChecksum checksum;
+	private Date updated;
+	private String posixPermissions;
+	private String dosAttributes;
 
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
-    }
+	private byte[] signature;
+	private Boolean isCorrectlySigned = null;
 
-    public Long getVersion() {
-        return version;
-    }
+	public void generateSignature(MasterKey masterKey) {
+		signature = masterKey.sign(generateMessageForSignature());
+	}
 
-    public void setVersion(Long version) {
-        this.version = version;
-    }
+	public boolean verifySignature(VerifyKey verifyKey) {
+		if (isCorrectlySigned == null) {
+			if (checksum != null && signature != null) {
+				try {
+					isCorrectlySigned = verifyKey.verify(generateMessageForSignature(), signature);
+				} catch (RuntimeException e) {
+					isCorrectlySigned = false;
+				}
+			}
+		}
+		return isCorrectlySigned == null ? false : isCorrectlySigned;
+	}
 
-    public FileType getType() {
+	protected byte[] generateMessageForSignature() {
+//		return checksum.getRaw();
+//		int h = hashCode();
+//		System.out.println(h);
+//		System.out.println(toString());
+		return Arrays.concatenate(checksum.getRaw(), ByteBuffer.allocate(4).putInt(hashCode()).array());
+	}
+
+	public void setSignature(byte[] signature) {
+		this.signature = signature;
+	}
+
+	public byte[] getSignature() {
+		return signature;
+	}
+
+	public String getCreatedBy() {
+		return createdBy;
+	}
+
+	public void setCreatedBy(String createdBy) {
+		this.createdBy = createdBy;
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
+	public void setVersion(Long version) {
+		this.version = version;
+	}
+
+	public FileType getType() {
 		return type;
 	}
 
@@ -83,43 +119,43 @@ public class FileVersion implements Cloneable {
 		this.type = type;
 	}
 
-    public Date getLastModified() {
-        return lastModified;
-    }
+	public Date getLastModified() {
+		return lastModified;
+	}
 
-    public void setLastModified(Date lastModified) {
-        this.lastModified = lastModified;
-    }
+	public void setLastModified(Date lastModified) {
+		this.lastModified = lastModified;
+	}
 
-    public Date getUpdated() {
-        return updated;
-    }
+	public Date getUpdated() {
+		return updated;
+	}
 
-    public void setUpdated(Date updated) {
-        this.updated = updated;
-    }
+	public void setUpdated(Date updated) {
+		this.updated = updated;
+	}
 
-    public FileStatus getStatus() {
-        return status;
-    }
+	public FileStatus getStatus() {
+		return status;
+	}
 
-    public void setStatus(FileStatus status) {
-        this.status = status;
-    }
-    
-    public String getPath() {
-    	return path;  	
-    }
+	public void setStatus(FileStatus status) {
+		this.status = status;
+	}
+
+	public String getPath() {
+		return path;  	
+	}
 
 	public String getName() {
 		return new File(path).getName();
 	}
-    
-    public void setPath(String path) {
+
+	public void setPath(String path) {
 		this.path = path;
 	}
-    
-    public FileChecksum getChecksum() {
+
+	public FileChecksum getChecksum() {
 		return checksum;
 	}
 
@@ -134,11 +170,11 @@ public class FileVersion implements Cloneable {
 	public void setSize(Long size) {
 		this.size = size;
 	}
-	
+
 	public String getLinkTarget() {
 		return linkTarget;
 	}
-	
+
 	public void setLinkTarget(String linkTarget) {
 		this.linkTarget = linkTarget;
 	}
@@ -167,30 +203,30 @@ public class FileVersion implements Cloneable {
 	}
 
 	@Override
-    public FileVersion clone() {
-        try {
-            FileVersion clone = (FileVersion) super.clone();
-            
-            clone.setChecksum(getChecksum());
-            clone.setCreatedBy(getCreatedBy());
-            clone.setLastModified(getLastModified());
-            clone.setUpdated(getUpdated());
-            clone.setPath(getPath());
-            clone.setType(getType());
-            clone.setVersion(getVersion());
-            clone.setSize(getSize());
-            clone.setDosAttributes(getDosAttributes());
-            clone.setPosixPermissions(getPosixPermissions());
-            clone.setLinkTarget(getLinkTarget());
-            clone.setStatus(getStatus());
-            
-            return clone;
-        }
-        catch (Exception ex) {
-            throw new RuntimeException(ex);
-        }        
-    }	
-	
+	public FileVersion clone() {
+		try {
+			FileVersion clone = (FileVersion) super.clone();
+
+			clone.setChecksum(getChecksum());
+			clone.setCreatedBy(getCreatedBy());
+			clone.setLastModified(getLastModified());
+			clone.setUpdated(getUpdated());
+			clone.setPath(getPath());
+			clone.setType(getType());
+			clone.setVersion(getVersion());
+			clone.setSize(getSize());
+			clone.setDosAttributes(getDosAttributes());
+			clone.setPosixPermissions(getPosixPermissions());
+			clone.setLinkTarget(getLinkTarget());
+			clone.setStatus(getStatus());
+
+			return clone;
+		}
+		catch (Exception ex) {
+			throw new RuntimeException(ex);
+		}        
+	}	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -203,8 +239,9 @@ public class FileVersion implements Cloneable {
 		result = prime * result + ((path == null) ? 0 : path.hashCode());
 		result = prime * result + ((posixPermissions == null) ? 0 : posixPermissions.hashCode());
 		result = prime * result + ((size == null) ? 0 : size.hashCode());
-		result = prime * result + ((status == null) ? 0 : status.hashCode());
-		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		// hashCode is generated from the string for enums because this is used for generated signature
+		result = prime * result + ((status == null) ? 0 : status.toString().hashCode());
+		result = prime * result + ((type == null) ? 0 : type.toString().hashCode());
 		result = prime * result + ((updated == null) ? 0 : updated.hashCode());
 		result = prime * result + ((version == null) ? 0 : version.hashCode());
 		return result;
@@ -291,22 +328,22 @@ public class FileVersion implements Cloneable {
 		CHANGED ("CHANGED"), 
 		RENAMED ("RENAMED"), 
 		DELETED ("DELETED");
-		
+
 		private String name;       
-		
+
 		private FileStatus(String name) {
 			this.name = name;
 		}
-		
+
 		public boolean equalsName(String otherName){
 			return (otherName == null) ? false : name.equals(otherName);
 		}
-		
+
 		public String toString() {
 			return name;
 		}	
 	}
-	
+
 	/**
 	 * A {@link FileVersion} can be of either one of the types in this enum.
 	 * Types are treated differently during the index and synchronization process.
@@ -315,17 +352,17 @@ public class FileVersion implements Cloneable {
 		FILE ("FILE"), 
 		FOLDER ("FOLDER"),
 		SYMLINK ("SYMLINK");
-		
+
 		private String name;       
-		
+
 		private FileType(String name) {
 			this.name = name;
 		}
-		
+
 		public boolean equalsName(String otherName){
 			return (otherName == null) ? false : name.equals(otherName);
 		}
-		
+
 		public String toString() {
 			return name;
 		}	

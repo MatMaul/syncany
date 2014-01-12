@@ -29,9 +29,9 @@ import javax.crypto.spec.SecretKeySpec;
 import org.syncany.crypto.CipherSession;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
+import org.syncany.crypto.MasterKey;
 import org.syncany.crypto.MultiCipherInputStream;
 import org.syncany.crypto.MultiCipherOutputStream;
-import org.syncany.crypto.SaltedSecretKey;
 import org.syncany.util.StringUtil;
 
 /**
@@ -48,8 +48,8 @@ import org.syncany.util.StringUtil;
 public class CipherTransformer extends Transformer {
 	public static final String TYPE = "cipher";
 	public static final String PROPERTY_CIPHER_SPECS = "cipherspecs";
-	public static final String PROPERTY_MASTER_KEY = "masterkey";
-	public static final String PROPERTY_MASTER_KEY_SALT = "mastersalt";
+	public static final String PROPERTY_KEY_SALT = "salt";
+	public static final String PROPERTY_ENCRYPT_KEY = "encryptkey";
 	
 	private List<CipherSpec> cipherSpecs;
 	private CipherSession cipherSession;
@@ -59,7 +59,7 @@ public class CipherTransformer extends Transformer {
 		this.cipherSession = null;
 	}
 	
-    public CipherTransformer(List<CipherSpec> cipherSpecs, SaltedSecretKey masterKey) {
+    public CipherTransformer(List<CipherSpec> cipherSpecs, MasterKey masterKey) {
     	this.cipherSpecs = cipherSpecs;
     	this.cipherSession = new CipherSession(masterKey);
     }    
@@ -71,16 +71,16 @@ public class CipherTransformer extends Transformer {
      */
     @Override
     public void init(Map<String, String> settings) throws Exception {
-    	String masterKeyStr = settings.get(PROPERTY_MASTER_KEY);
-    	String masterKeySaltStr = settings.get(PROPERTY_MASTER_KEY);
+    	String encryptKeyStr = settings.get(PROPERTY_ENCRYPT_KEY);
+    	String keySaltStr = settings.get(PROPERTY_KEY_SALT);
     	String cipherSpecsListStr = settings.get(PROPERTY_CIPHER_SPECS);
     	
-    	if (masterKeyStr == null || masterKeySaltStr == null || cipherSpecsListStr == null) {
-    		throw new Exception("Settings '"+PROPERTY_CIPHER_SPECS+"', '"+PROPERTY_MASTER_KEY+"' and '"+PROPERTY_MASTER_KEY_SALT+"' must both be filled.");
+    	if (encryptKeyStr == null || keySaltStr == null || cipherSpecsListStr == null) {
+    		throw new Exception("Settings '"+PROPERTY_CIPHER_SPECS+"', '"+PROPERTY_ENCRYPT_KEY+"' and '"+PROPERTY_KEY_SALT+"' must both be filled.");
     	}
     	
     	initCipherSpecs(cipherSpecsListStr);
-    	initCipherSession(masterKeyStr, masterKeySaltStr);    	
+    	initCipherSession(encryptKeyStr, keySaltStr);    	
     }
     
     private void initCipherSpecs(String cipherSpecListStr) throws Exception {
@@ -98,11 +98,11 @@ public class CipherTransformer extends Transformer {
     	}
 	}
 
-	private void initCipherSession(String masterKeyStr, String masterKeySaltStr) {
-		byte[] masterKeySalt = StringUtil.fromHex(masterKeySaltStr);
-		byte[] masterKeyBytes = StringUtil.fromHex(masterKeyStr);
+	private void initCipherSession(String encryptKeyStr, String keySaltStr) {
+		byte[] masterKeySalt = StringUtil.fromHex(keySaltStr);
+		byte[] masterEncryptBytes = StringUtil.fromHex(encryptKeyStr);
 		
-		SaltedSecretKey masterKey = new SaltedSecretKey(new SecretKeySpec(masterKeyBytes, "RAW"), masterKeySalt);		
+		MasterKey masterKey = new MasterKey(new SecretKeySpec(masterEncryptBytes, "RAW"), masterKeySalt, null);		
 		cipherSession = new CipherSession(masterKey);
 	}
 

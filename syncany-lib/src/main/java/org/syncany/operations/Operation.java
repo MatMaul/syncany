@@ -81,7 +81,7 @@ public abstract class Operation {
 		
 		if (localDatabaseFile.exists()) {
 			logger.log(Level.INFO, "- Loading database from "+localDatabaseFile+" ...");
-			dao.load(db, localDatabaseFile);
+			dao.load(db, localDatabaseFile, config.getVerifyKey());
 		}
 		else {
 			logger.log(Level.INFO, "- NOT loading. File does not exist.");

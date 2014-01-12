@@ -37,6 +37,7 @@ import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamWriter;
 
+import org.abstractj.kalium.keys.VerifyKey;
 import org.syncany.chunk.Transformer;
 import org.syncany.database.ChunkEntry.ChunkChecksum;
 import org.syncany.database.FileContent.FileChecksum;
@@ -45,7 +46,7 @@ import org.syncany.database.FileVersion.FileType;
 import org.syncany.database.MultiChunkEntry.MultiChunkId;
 import org.syncany.database.PartialFileHistory.FileHistoryId;
 import org.syncany.database.VectorClock.VectorClockComparison;
-import org.syncany.util.FileUtil;
+import org.syncany.util.StringUtil;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -266,6 +267,10 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 					xmlOut.writeAttribute("checksum", fileVersion.getChecksum().toString());
 				}
 				
+				if (fileVersion.getSignature() != null) {
+					xmlOut.writeAttribute("signature", StringUtil.toHex(fileVersion.getSignature()));
+				}
+				
 				if (fileVersion.getDosAttributes() != null) {
 					xmlOut.writeAttribute("dosattrs", fileVersion.getDosAttributes());
 				}
@@ -323,22 +328,22 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 	}	
 
 	@Override
-	public void load(Database db, File databaseFile) throws IOException {
-        load(db, databaseFile, false);
+	public void load(Database db, File databaseFile, VerifyKey verifyKey) throws IOException {
+        load(db, databaseFile, verifyKey, false);
 	}
 	
 	@Override
-	public void load(Database db, File databaseFile, boolean headersOnly) throws IOException {
-        load(db, databaseFile, null, null, headersOnly);
+	public void load(Database db, File databaseFile, VerifyKey verifyKey, boolean headersOnly) throws IOException {
+        load(db, databaseFile, verifyKey, null, null, headersOnly);
 	}
 	
 	@Override
-	public void load(Database db, File databaseFile, VectorClock fromVersion, VectorClock toVersion) throws IOException {
-		load(db, databaseFile, fromVersion, toVersion, false);
+	public void load(Database db, File databaseFile, VerifyKey verifyKey, VectorClock fromVersion, VectorClock toVersion) throws IOException {
+		load(db, databaseFile, verifyKey, fromVersion, toVersion, false);
 	}
 	
 	@Override
-	public void load(Database db, File databaseFile, VectorClock fromVersion, VectorClock toVersion, boolean headersOnly) throws IOException {
+	public void load(Database db, File databaseFile, VerifyKey verifyKey, VectorClock fromVersion, VectorClock toVersion, boolean headersOnly) throws IOException {
         InputStream is;
         
 		if (transformer == null) {
@@ -354,7 +359,7 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 			SAXParserFactory factory = SAXParserFactory.newInstance();
 			SAXParser saxParser = factory.newSAXParser();
 			
-			saxParser.parse(is, new DatabaseXmlHandler(db, fromVersion, toVersion, headersOnly));
+			saxParser.parse(is, new DatabaseXmlHandler(db, verifyKey, fromVersion, toVersion, headersOnly));
         }
         catch (Exception e) {
         	throw new IOException(e);
@@ -426,6 +431,7 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 	
 	public class DatabaseXmlHandler extends DefaultHandler {
 		private Database database;
+		private VerifyKey verifyKey;
 		private VectorClock versionFrom;
 		private VectorClock versionTo;
 		private boolean headersOnly;
@@ -438,9 +444,10 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 		private MultiChunkEntry multiChunk;
 		private PartialFileHistory fileHistory;
 		
-		public DatabaseXmlHandler(Database database, VectorClock fromVersion, VectorClock toVersion, boolean headersOnly) {
+		public DatabaseXmlHandler(Database database, VerifyKey verifyKey, VectorClock fromVersion, VectorClock toVersion, boolean headersOnly) {
 			this.elementPath = "";
 			this.database = database;
+			this.verifyKey = verifyKey;
 			this.versionFrom = fromVersion;
 			this.versionTo = toVersion;
 			this.headersOnly = headersOnly;
@@ -524,6 +531,7 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 					String updatedStr = attributes.getValue("updated");
 					String createdBy = attributes.getValue("createdBy");
 					String checksumStr = attributes.getValue("checksum");
+					String signatureStr = attributes.getValue("signature");
 					String linkTarget = attributes.getValue("linkTarget");
 					String dosAttributes = attributes.getValue("dosattrs");
 					String posixPermissions = attributes.getValue("posixperms");
@@ -553,6 +561,10 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 						fileVersion.setChecksum(FileChecksum.parseFileChecksum(checksumStr));							
 					}
 					
+					if (signatureStr != null) {
+						fileVersion.setSignature(StringUtil.fromHex(signatureStr));							
+					}
+					
 					if (linkTarget != null) {
 						fileVersion.setLinkTarget(linkTarget);
 					}
@@ -565,7 +577,9 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 						fileVersion.setPosixPermissions(posixPermissions);
 					}
 	
-					fileHistory.addFileVersion(fileVersion);							
+					if (verifyKey == null || fileVersion.verifySignature(verifyKey)) {
+						fileHistory.addFileVersion(fileVersion);		
+					}
 				}			
 			}
 		}
@@ -601,7 +615,9 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 					multiChunk = null;
 				}	
 				else if (elementPath.equalsIgnoreCase("/database/databaseVersions/databaseVersion/fileHistories/fileHistory")) {
-					databaseVersion.addFileHistory(fileHistory);
+					if (fileHistory.getLastVersion() != null) {
+						databaseVersion.addFileHistory(fileHistory);
+					}
 					fileHistory = null;
 				}	
 				else {

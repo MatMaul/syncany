@@ -8,6 +8,7 @@ dependencies {
 	compile			"commons-codec:commons-codec:1.8"            
 	compile			"org.reflections:reflections:0.9.8"
 	compile			"org.slf4j:slf4j-api:1.6.0" // for reflections
+	compile			"org.abstractj.kalium:kalium:0.2.0"
             
 	testCompile     "junit:junit:4.3"
 }

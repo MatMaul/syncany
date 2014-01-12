@@ -23,8 +23,9 @@ import static org.syncany.crypto.CipherParams.KEY_DERIVATION_DIGEST;
 import static org.syncany.crypto.CipherParams.KEY_DERIVATION_INFO;
 import static org.syncany.crypto.CipherParams.MASTER_KEY_DERIVATION_FUNCTION;
 import static org.syncany.crypto.CipherParams.MASTER_KEY_DERIVATION_ROUNDS;
-import static org.syncany.crypto.CipherParams.MASTER_KEY_SALT_SIZE;
-import static org.syncany.crypto.CipherParams.MASTER_KEY_SIZE;
+import static org.syncany.crypto.CipherParams.MAST_KEY_SALT_SIZE;
+import static org.syncany.crypto.CipherParams.MASTER_SIGNATURE_KEY_SIZE;
+import static org.syncany.crypto.CipherParams.MASTER_ENCRYPT_KEY_SIZE;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -150,19 +151,31 @@ public class CipherUtil {
 		return new SaltedSecretKey(toSecretKey(secretKeyBytes, algorithm), saltBytes);
 	}
 	
-	public static SaltedSecretKey createMasterKey(String password) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		byte[] salt = createRandomArray(MASTER_KEY_SALT_SIZE/8);
-		return createMasterKey(password, salt);
-    }
+	public static MasterKey createMasterKey(String encryptPassword, String signPassword) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		return createMasterKey(encryptPassword, signPassword, null);
+	}
+	
+	public static MasterKey createMasterKey(String encryptPassword, String signPassword, byte[] salt) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		if (salt == null) {
+			salt = createRandomArray(MAST_KEY_SALT_SIZE/8);
+		}
 
-	public static SaltedSecretKey createMasterKey(String password, byte[] salt) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		logger.log(Level.INFO, "Creating secret key using "+MASTER_KEY_DERIVATION_FUNCTION+" with "+MASTER_KEY_DERIVATION_ROUNDS+" rounds, key size "+MASTER_KEY_SIZE+" bit ...");
+		SecretKey encryptKey = createSecretKey(encryptPassword, salt, MASTER_ENCRYPT_KEY_SIZE);
+		SecretKey signKey = null;
+		if (signPassword != null && !"".equals(signPassword)) {
+			signKey = createSecretKey(signPassword, salt, MASTER_SIGNATURE_KEY_SIZE);
+		}
+		return new MasterKey(encryptKey, salt, signKey);
+	}
+
+	public static SecretKey createSecretKey(String password, byte[] salt, int keySize) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		logger.log(Level.INFO, "Creating secret key using "+MASTER_KEY_DERIVATION_FUNCTION+" with "+MASTER_KEY_DERIVATION_ROUNDS+" rounds, key size "+keySize+" bit ...");
 		
     	SecretKeyFactory factory = SecretKeyFactory.getInstance(MASTER_KEY_DERIVATION_FUNCTION);
-        KeySpec pbeKeySpec = new PBEKeySpec(password.toCharArray(), salt, MASTER_KEY_DERIVATION_ROUNDS, MASTER_KEY_SIZE);
-        SecretKey masterKey = factory.generateSecret(pbeKeySpec);
+        KeySpec pbeKeySpec = new PBEKeySpec(password.toCharArray(), salt, MASTER_KEY_DERIVATION_ROUNDS, keySize);
+        SecretKey encryptKey = factory.generateSecret(pbeKeySpec);
         
-        return new SaltedSecretKey(masterKey, salt);
+        return encryptKey;
     }
 		
 	public static Cipher createCipher(CipherSpec cipherSpec, int cipherInitMode, SecretKey secretKey, byte[] iv) throws CipherException {
@@ -201,7 +214,7 @@ public class CipherUtil {
 		return Arrays.equals(actualMagic, MultiCipherOutputStream.STREAM_MAGIC);
 	}
 	
-	public static void encrypt(InputStream plaintextInputStream, OutputStream ciphertextOutputStream, List<CipherSpec> cipherSuites, SaltedSecretKey masterKey) throws IOException {
+	public static void encrypt(InputStream plaintextInputStream, OutputStream ciphertextOutputStream, List<CipherSpec> cipherSuites, MasterKey masterKey) throws IOException {
 		CipherSession cipherSession = new CipherSession(masterKey);
 		OutputStream multiCipherOutputStream = new MultiCipherOutputStream(ciphertextOutputStream, cipherSuites, cipherSession);
 		
@@ -211,14 +224,14 @@ public class CipherUtil {
 		ciphertextOutputStream.close();
 	}
 	
-	public static byte[] encrypt(InputStream plaintextInputStream, List<CipherSpec> cipherSuites, SaltedSecretKey masterKey) throws IOException {
+	public static byte[] encrypt(InputStream plaintextInputStream, List<CipherSpec> cipherSuites, MasterKey masterKey) throws IOException {
 		ByteArrayOutputStream ciphertextOutputStream = new ByteArrayOutputStream();
 		encrypt(plaintextInputStream, ciphertextOutputStream, cipherSuites, masterKey);
 		
 		return ciphertextOutputStream.toByteArray();
 	}
 	
-	public static byte[] encrypt(byte[] plaintext, List<CipherSpec> cipherSuites, SaltedSecretKey masterKey) throws IOException {
+	public static byte[] encrypt(byte[] plaintext, List<CipherSpec> cipherSuites, MasterKey masterKey) throws IOException {
 		ByteArrayInputStream plaintextInputStream = new ByteArrayInputStream(plaintext);	
 		ByteArrayOutputStream ciphertextOutputStream = new ByteArrayOutputStream();
 		
@@ -227,7 +240,7 @@ public class CipherUtil {
 		return ciphertextOutputStream.toByteArray();
 	}
 	
-	public static byte[] decrypt(InputStream fromInputStream, SaltedSecretKey masterKey) throws IOException {		
+	public static byte[] decrypt(InputStream fromInputStream, MasterKey masterKey) throws IOException {		
 		CipherSession cipherSession = new CipherSession(masterKey);
 		MultiCipherInputStream cipherInputStream = new MultiCipherInputStream(fromInputStream, cipherSession);
 		ByteArrayOutputStream plaintextOutputStream = new ByteArrayOutputStream();

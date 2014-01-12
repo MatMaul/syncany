@@ -71,7 +71,7 @@ public class FileVersionComparatorTest {
 		}
 		
 		// Run
-		FileProperties fileProperties = versionComparator.captureFileProperties(somefile, null, true);
+		FileProperties fileProperties = versionComparator.captureFileProperties(somefile, null, true, true);// TODO [a]
 		
 		// Test
 		assertNotNull(fileProperties.getChecksum());

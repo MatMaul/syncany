@@ -53,6 +53,7 @@ public class GenlinkOperation extends AbstractInitOperation {
 		String shareLink = null;
 		boolean shareLinkEncrypted = false;
 		
+		// TODO [a] check
 		if (configTO.getMasterKey() != null) {
 			List<CipherSpec> cipherSpecs = CipherSpecs.getDefaultCipherSpecs(); // TODO [low] Shouldn't this be the same as the application?!
 			
