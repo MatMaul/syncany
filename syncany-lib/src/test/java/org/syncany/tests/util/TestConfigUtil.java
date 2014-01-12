@@ -18,6 +18,9 @@
 package org.syncany.tests.util;
 
 import java.io.File;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -27,6 +30,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.syncany.chunk.CipherTransformer;
+import org.syncany.chunk.Ed25519SignTransformer;
 import org.syncany.chunk.GzipTransformer;
 import org.syncany.config.Config;
 import org.syncany.config.to.ConfigTO;
@@ -39,12 +43,13 @@ import org.syncany.connection.plugins.local.LocalConnection;
 import org.syncany.connection.plugins.unreliable_local.UnreliableLocalConnection;
 import org.syncany.connection.plugins.unreliable_local.UnreliableLocalPlugin;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 
 public class TestConfigUtil {
 	private static final String RUNDATE = new SimpleDateFormat("yyMMddHHmmssSSS").format(new Date());
 	private static boolean cryptoEnabled = false;
-	private static SaltedSecretKey masterKey = null;
+	private static MasterKey cachedMasterKey = null;
+	private static MasterKey wrongSignMasterKey;
 	
 	public static Map<String, String> createTestLocalConnectionSettings() throws Exception {
 		Map<String, String> pluginSettings = new HashMap<String, String>();
@@ -64,6 +69,10 @@ public class TestConfigUtil {
 	}
 	
 	public static Config createTestLocalConfig(String machineName, Connection connection) throws Exception {
+		return createTestLocalConfig(machineName, connection, false);
+	}
+	
+	public static Config createTestLocalConfig(String machineName, Connection connection, boolean useWrongSigningPassword) throws Exception {
 		File tempLocalDir = TestFileUtil.createTempDirectoryInSystemTemp(createUniqueName("client-"+machineName, connection));		
 		tempLocalDir.mkdirs();
 		
@@ -84,9 +93,13 @@ public class TestConfigUtil {
 			cipherTransformerTO.setType(CipherTransformer.TYPE);
 			cipherTransformerTO.setSettings(cipherTransformerSettings);
 			
+			TransformerTO signTransformerTO = new TransformerTO();
+			signTransformerTO.setType(Ed25519SignTransformer.TYPE);
+			
 			repoTO.setTransformers(Arrays.asList(new TransformerTO[] { 
 				gzipTransformerTO, 
-				cipherTransformerTO 
+				cipherTransformerTO,
+				signTransformerTO
 			}));
 		}
 		else {
@@ -99,14 +112,14 @@ public class TestConfigUtil {
 		configTO.setMachineName(machineName+Math.abs(new Random().nextInt()));
 		
 		if (cryptoEnabled) {
-			if (masterKey == null) {
-				masterKey = CipherUtil.createMasterKey("some password");
+			MasterKey masterKey = null;
+			if (useWrongSigningPassword) {
+				masterKey = getWrongSignMasterKey();
+				repoTO.setVerifyKey(Ed25519SignTransformer.generateVerifyKey(getMasterKey().getSigningKey().getEncoded()));
+			} else {
+				masterKey = getMasterKey();
 			}
-			
 			configTO.setMasterKey(masterKey);
-		}
-		else {
-			configTO.setMasterKey(null);	
 		}
 						
 		// Skip configTO.setConnection()		
@@ -120,6 +133,20 @@ public class TestConfigUtil {
 		config.getLogDir().mkdirs();
 		
 		return config;
+	}
+	
+	public static MasterKey getMasterKey() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		if (cachedMasterKey == null) {
+			cachedMasterKey = CipherUtil.createMasterKey("some password", "some other password");
+		}
+		return cachedMasterKey;
+	}
+	
+	public static MasterKey getWrongSignMasterKey() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		if (wrongSignMasterKey == null) {
+			wrongSignMasterKey = CipherUtil.createMasterKey("some password", "some wrong password", getMasterKey().getSalt());
+		}
+		return wrongSignMasterKey;
 	}
 	
 	public static Connection createTestLocalConnection() throws Exception {
@@ -173,6 +200,10 @@ public class TestConfigUtil {
 	
 	public static String createUniqueName(String name, Object uniqueHashObj) {
 		return String.format("syncany-%s-%d-%s", RUNDATE, 100 + uniqueHashObj.hashCode() % 899, name);
+	}
+
+	public static boolean isCryptoEnabled() {
+		return cryptoEnabled;
 	}
 
 	public static void setCrypto(boolean cryptoEnabled) {

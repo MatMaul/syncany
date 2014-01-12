@@ -109,7 +109,6 @@ public class Indexer {
 		
 		// Find and remove deleted files
 		removeDeletedFiles(newDatabaseVersion);
-		
 		return newDatabaseVersion;
 	}
 	

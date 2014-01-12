@@ -1,0 +1,117 @@
+/*
+ * Syncany, www.syncany.org
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
+package org.syncany.tests.scenarios;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.io.IOException;
+import java.lang.reflect.Field;
+
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.syncany.chunk.Ed25519SignTransformer;
+import org.syncany.chunk.Transformer;
+import org.syncany.connection.plugins.Connection;
+import org.syncany.operations.DownOperation.DownOperationResult;
+import org.syncany.tests.util.TestClient;
+import org.syncany.tests.util.TestConfigUtil;
+import org.syncany.util.sign.SignException;
+
+/**
+ * @author matmaul
+ *
+ */
+public class SignatureScenarioTest {
+	static Field verifyKeyField;
+
+	static {
+		try {
+			verifyKeyField = Ed25519SignTransformer.class.getDeclaredField("verifyKey");
+			verifyKeyField.setAccessible(true);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private static TestClient clientA;
+	private static TestClient clientB;
+	private static TestClient unauthorizedClientC;
+
+	@BeforeClass
+	public static void before() throws Exception {
+		// Setup 
+		Connection testConnection = TestConfigUtil.createTestLocalConnection();
+
+		clientA = new TestClient("A", testConnection);
+		clientB = new TestClient("B", testConnection);
+		unauthorizedClientC = new TestClient("C", testConnection, true);
+	}
+
+	@Test
+	public void testSignature() throws Exception {
+		if (TestConfigUtil.isCryptoEnabled()) {
+			// Run 
+			clientA.createNewFile("A-file1.jpg", 10000);
+			clientA.up();
+
+			DownOperationResult res = clientB.down();
+			assertTrue("Client B: A-file1.jpg not synchronized", res.getChangeSet().getNewFiles().contains("A-file1.jpg"));
+			clientB.createNewFile("B-file1.jpg", 10000);
+			clientB.up();
+
+			res = unauthorizedClientC.down();
+			assertTrue("Client C: A-file1.jpg not synchronized", res.getChangeSet().getNewFiles().contains("A-file1.jpg"));
+			assertTrue("Client C: B-file1.jpg not synchronized", res.getChangeSet().getNewFiles().contains("B-file1.jpg"));
+
+			unauthorizedClientC.createNewFile("C-file1.jpg", 10000);
+
+
+			try {
+				unauthorizedClientC.up();
+				fail("Up should have failed for the unauthorized client");
+			} catch (IOException expectedException) {
+				if (!(expectedException.getCause() instanceof SignException)) {
+					throw expectedException;
+				}
+			}
+
+			// bypass a signature verification exception to force upload of untrusted data
+			Transformer signTransformer = unauthorizedClientC.getConfig().getTransformer().getNextTransformer().getNextTransformer();
+			verifyKeyField.set(signTransformer, null);
+			unauthorizedClientC.up();
+
+			res = clientB.down();
+			assertFalse("Client B: C-file1.jpg of unauthorized client synchronized", res.getChangeSet().getNewFiles().contains("C-file1.jpg"));
+
+			clientB.createNewFile("B-file2.jpg", 1000);
+			clientB.up();
+
+			res = clientA.down();
+			assertFalse("Client A: C-file1.jpg of unauthorized client synchronized", res.getChangeSet().getNewFiles().contains("C-file1.jpg"));
+			assertTrue("Client A: B-file1.jpg not synchronized", res.getChangeSet().getNewFiles().contains("B-file1.jpg"));
+			assertTrue("Client A: B-file2.jpg not synchronized", res.getChangeSet().getNewFiles().contains("B-file2.jpg"));
+
+			clientA.cleanup();
+			clientB.cleanup();
+			unauthorizedClientC.cleanup();
+		}
+	}
+}

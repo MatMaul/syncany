@@ -22,6 +22,7 @@ import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,19 +40,22 @@ import org.syncany.connection.plugins.PluginOptionSpec.OptionValidationResult;
 import org.syncany.connection.plugins.PluginOptionSpecs;
 import org.syncany.connection.plugins.Plugins;
 import org.syncany.connection.plugins.StorageException;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.operations.GenlinkOperation.GenlinkOperationResult;
 import org.syncany.util.StringUtil;
 import org.syncany.util.StringUtil.StringJoinListener;
 
 public abstract class AbstractInitCommand extends Command {
+	public static final int PASSWORD_MIN_LENGTH = 8;
+	public static final int PASSWORD_WARN_LENGTH = 12;
+
 	protected Console console;
 
 	public AbstractInitCommand() {
 		console = System.console();
 	}
 
-	protected ConfigTO createConfigTO(File localDir, SaltedSecretKey masterKey, ConnectionTO connectionTO) throws Exception {
+	protected ConfigTO createConfigTO(File localDir, MasterKey masterKey, ConnectionTO connectionTO) throws Exception {
 		ConfigTO configTO = new ConfigTO();
 
 		configTO.setDisplayName(getDefaultDisplayName());
@@ -252,5 +256,51 @@ public abstract class AbstractInitCommand extends Command {
 
 			out.println();
 		}
+	}
+	
+	protected String askPassword(String label, boolean confirm, boolean checkLength) {
+		String password = null;
+		
+		while (password == null) {
+			char[] passwordChars = console.readPassword(label);
+			if (passwordChars == null || passwordChars.length == 0) {
+				return null;
+			}
+			
+			if (confirm) {
+			char[] confirmPasswordChars = console.readPassword("Confirm: ");
+			
+			if (!Arrays.equals(passwordChars, confirmPasswordChars)) {
+				out.println("ERROR: Passwords do not match.");
+				out.println();
+				
+				continue;
+			} 
+			}
+			
+			if (checkLength) {
+			if (passwordChars.length < PASSWORD_MIN_LENGTH) {
+				out.println("ERROR: This password is not allowed (too short, min. "+PASSWORD_MIN_LENGTH+" chars)");
+				out.println();
+				
+				continue;
+			}
+			
+			if (passwordChars.length < PASSWORD_WARN_LENGTH) {
+				out.println();
+				out.println("WARNING: The password is a bit short. Less than "+PASSWORD_WARN_LENGTH+" chars are not future-proof!");
+				String yesno = console.readLine("Are you sure you want to use it (y/n)? ");
+				
+				if (!yesno.toLowerCase().startsWith("y")) {
+					out.println();
+					continue;
+				}
+			}
+			}
+			
+			password = new String(passwordChars);			
+		}	
+		
+		return password;
 	}
 }

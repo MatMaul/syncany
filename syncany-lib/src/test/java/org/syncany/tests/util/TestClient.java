@@ -36,7 +36,11 @@ import org.syncany.operations.WatchOperation.WatchOperationOptions;
 
 public class TestClient extends Client {
 	public TestClient(String machineName, Connection connection) throws Exception {
-		Config testConfig = TestConfigUtil.createTestLocalConfig(machineName, connection);
+		this(machineName, connection, false);
+	}	
+	
+	public TestClient(String machineName, Connection connection,  boolean useWrongSigningPassword) throws Exception {
+		Config testConfig = TestConfigUtil.createTestLocalConfig(machineName, connection, useWrongSigningPassword);
 		testConfig.setMachineName(machineName);
 		testConfig.setDisplayName(machineName);
 		

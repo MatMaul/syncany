@@ -56,6 +56,10 @@ public class RepoTO {
 	@ElementList(name="transformers", required=false, entry="transformer")
 	private List<TransformerTO> transformers;
 	
+	@Element(name="verifykey", required=false)
+	private String verifyKeyEncoded;
+	private byte[] verifyKey;
+	
 	public byte[] getRepoId() {
 		return repoId;
 	}
@@ -67,22 +71,42 @@ public class RepoTO {
 	@Persist
 	public void prepare() {
 		repoIdEncoded = (repoId != null) ? StringUtil.toHex(repoId) : null;
+		if (verifyKey != null) {
+			verifyKeyEncoded = StringUtil.toHex(verifyKey);
+		}
+		else {
+			verifyKeyEncoded = null;
+		}
 	}
 
 	@Complete
 	public void release() {
 		repoIdEncoded = null;
+		verifyKey = null;
 	}
 	
 	@Commit
 	public void commit() {
 		repoId = (repoIdEncoded != null) ? StringUtil.fromHex(repoIdEncoded) : null;
+		if (verifyKeyEncoded != null && !"".equals(verifyKeyEncoded)) {
+			setVerifyKey(StringUtil.fromHex(verifyKeyEncoded));
+		} else {
+			verifyKey = null;
+		}
 	}
-
+	
+	public void setVerifyKey(byte[] verifyKey) {
+		this.verifyKey = verifyKey;
+	}
+	
+	public byte[] getVerifyKey() {
+		return verifyKey;
+	}
+	
 	public ChunkerTO getChunker() {
 		return chunker;
 	}
-
+	
 	public void setChunker(ChunkerTO chunker) {
 		this.chunker = chunker;
 	}

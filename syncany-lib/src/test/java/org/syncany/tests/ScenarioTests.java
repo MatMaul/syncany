@@ -41,6 +41,7 @@ import org.syncany.tests.scenarios.RenameDeleteScenarioTest;
 import org.syncany.tests.scenarios.RenameFileWithDiffModifiedDateScenarioTest;
 import org.syncany.tests.scenarios.RenameNoDownloadMultiChunksScenarioTest;
 import org.syncany.tests.scenarios.RenameToExistingFileScenarioTest;
+import org.syncany.tests.scenarios.SignatureScenarioTest;
 import org.syncany.tests.scenarios.SingleFileNoConflictsScenarioTest;
 import org.syncany.tests.scenarios.SingleFolderNoConflictsScenarioTest;
 import org.syncany.tests.scenarios.SymlinkSyncScenarioTest;
@@ -72,7 +73,8 @@ import org.syncany.tests.scenarios.ThreeClientsOneLoserScenarioTest;
 	SingleFileNoConflictsScenarioTest.class,
 	SingleFolderNoConflictsScenarioTest.class,
 	SymlinkSyncScenarioTest.class,
-	ThreeClientsOneLoserScenarioTest.class
+	ThreeClientsOneLoserScenarioTest.class,
+	SignatureScenarioTest.class
 })
 public class ScenarioTests {
 	// This class executes all tests

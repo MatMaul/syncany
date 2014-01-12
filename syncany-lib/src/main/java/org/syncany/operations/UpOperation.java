@@ -102,6 +102,15 @@ public class UpOperation extends Operation {
 		logger.log(Level.INFO, "");
 		logger.log(Level.INFO, "Running 'Sync up' at client " + config.getMachineName() + " ...");
 		logger.log(Level.INFO, "--------------------------------------------");
+		
+		if (config.getMasterKey() != null && config.getMasterKey().getSigningKey() == null) {
+			logger.log(Level.INFO, "No signing key available, up is not possible.");
+			result.setResultCode(UpResultCode.NOK_NO_SIGNING_KEY);
+
+			disconnectTransferManager();
+
+			return result;
+		}
 
 		// Load database
 		Database database = (loadedDatabase != null) ? loadedDatabase : loadLocalDatabase();
@@ -305,7 +314,7 @@ public class UpOperation extends Operation {
 		newVectorClock.setClock(config.getMachineName(), newLocalValue);
 
 		// Index
-		Deduper deduper = new Deduper(config.getChunker(), config.getMultiChunker(), config.getTransformer());
+		Deduper deduper = new Deduper(config.getChunker(), config.getMultiChunker(), config.getUnsignedTransformer());
 		Indexer indexer = new Indexer(config, deduper, database, dirtyDatabase);
 
 		DatabaseVersion newDatabaseVersion = indexer.index(localFiles);
@@ -447,7 +456,7 @@ public class UpOperation extends Operation {
 
 	public static class UpOperationResult implements OperationResult {
 		public enum UpResultCode {
-			OK_APPLIED_CHANGES, OK_NO_CHANGES, NOK_UNKNOWN_DATABASES
+			OK_APPLIED_CHANGES, OK_NO_CHANGES, NOK_UNKNOWN_DATABASES, NOK_NO_SIGNING_KEY
 		};
 
 		private UpResultCode resultCode;

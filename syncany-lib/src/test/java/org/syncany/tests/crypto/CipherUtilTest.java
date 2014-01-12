@@ -41,6 +41,7 @@ import org.syncany.crypto.CipherParams;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
+import org.syncany.crypto.MasterKey;
 import org.syncany.crypto.MultiCipherOutputStream;
 import org.syncany.crypto.SaltedSecretKey;
 import org.syncany.tests.util.TestFileUtil;
@@ -58,51 +59,51 @@ public class CipherUtilTest {
 	public void testCreateMasterKeyWithSalt() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
 		long timeStart = System.currentTimeMillis();
 		
-		SaltedSecretKey masterKeyForPasswordTestAndSalt123 = CipherUtil.createMasterKey("Test", new byte[] { 1, 2, 3 });
+		MasterKey masterKeyForPasswordTestAndSalt123 = CipherUtil.createMasterKey("Test", "Test 2", new byte[] { 1, 2, 3 });
 		
 		long timeEnd = System.currentTimeMillis();
 		long timeDuration = timeEnd - timeStart;
 
 		logger.log(Level.INFO, "Creating master key took "+timeDuration+"ms:");
-		logger.log(Level.INFO, " - Key:  "+StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncoded()));
+		logger.log(Level.INFO, " - Key:  "+StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncryptKey().getEncoded()));
 		logger.log(Level.INFO, " - Salt: "+StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getSalt()));
 						
 		assertEquals("010203", StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getSalt()));
 		assertEquals("44fda24d53b29828b62c362529bd9df5c8a92c2736bcae3a28b3d7b44488e36e246106aa5334813028abb2048eeb5e177df1c702d93cf82aeb7b6d59a8534ff0",
-			StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncoded()));
+			StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncryptKey().getEncoded()));
 
-		assertEquals(CipherParams.MASTER_KEY_SIZE/8, masterKeyForPasswordTestAndSalt123.getEncoded().length); 
-		assertEquals("PBKDF2WithHmacSHA1", masterKeyForPasswordTestAndSalt123.getAlgorithm());
-		assertEquals("RAW", masterKeyForPasswordTestAndSalt123.getFormat());
+		assertEquals(CipherParams.MASTER_ENCRYPT_KEY_SIZE/8, masterKeyForPasswordTestAndSalt123.getEncryptKey().getEncoded().length); 
+		assertEquals("PBKDF2WithHmacSHA1", masterKeyForPasswordTestAndSalt123.getEncryptKey().getAlgorithm());
+		assertEquals("RAW", masterKeyForPasswordTestAndSalt123.getEncryptKey().getFormat());
 		 
 		assertTrue(timeDuration > 5000);
 	}
 	
 	@Test
 	public void testCreateMasterKeyNoSalt() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		SaltedSecretKey masterKeyForPasswordTestNoSalt1 = CipherUtil.createMasterKey("Test");
-		SaltedSecretKey masterKeyForPasswordTestNoSalt2 = CipherUtil.createMasterKey("Test");
+		MasterKey masterKeyForPasswordTestNoSalt1 = CipherUtil.createMasterKey("Test", "Test 2");
+		MasterKey masterKeyForPasswordTestNoSalt2 = CipherUtil.createMasterKey("Test", "Test 2");
 						
 		logger.log(Level.INFO, "Key comparison for password 'Test':");
-		logger.log(Level.INFO, "- Master key 1: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt1.getEncoded()));
+		logger.log(Level.INFO, "- Master key 1: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt1.getEncryptKey().getEncoded()));
 		logger.log(Level.INFO, "     with salt: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt1.getSalt()));
-		logger.log(Level.INFO, "- Master key 2: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt2.getEncoded()));
+		logger.log(Level.INFO, "- Master key 2: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt2.getEncryptKey().getEncoded()));
 		logger.log(Level.INFO, "     with salt: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt2.getSalt()));
 		
 		assertFalse(Arrays.equals(masterKeyForPasswordTestNoSalt1.getSalt(), masterKeyForPasswordTestNoSalt2.getSalt()));
-		assertFalse(Arrays.equals(masterKeyForPasswordTestNoSalt1.getEncoded(), masterKeyForPasswordTestNoSalt2.getEncoded()));
+		assertFalse(Arrays.equals(masterKeyForPasswordTestNoSalt1.getEncryptKey().getEncoded(), masterKeyForPasswordTestNoSalt2.getEncryptKey().getEncoded()));
 	}
 	
 	@Test
 	public void testCreateDerivedKeys() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		SaltedSecretKey masterKey = createDummyMasterKey();		
+		MasterKey masterKey = createDummyMasterKey();		
 		CipherSpec cipherSpec = CipherSpecs.getCipherSpec(CipherSpecs.AES_128_GCM);
 		
 		byte[] derivedKeySalt1 = new byte[] { 1, 2, 3 };
 		byte[] derivedKeySalt2 = new byte[] { 1, 2, 3, 4 };
 
-		SaltedSecretKey derivedKey1 = CipherUtil.createDerivedKey(masterKey, derivedKeySalt1, cipherSpec);
-		SaltedSecretKey derivedKey2 = CipherUtil.createDerivedKey(masterKey, derivedKeySalt2, cipherSpec);
+		SaltedSecretKey derivedKey1 = CipherUtil.createDerivedKey(masterKey.getEncryptKey(), derivedKeySalt1, cipherSpec);
+		SaltedSecretKey derivedKey2 = CipherUtil.createDerivedKey(masterKey.getEncryptKey(), derivedKeySalt2, cipherSpec);
 		
 		logger.log(Level.INFO, "- Derived key 1: "+StringUtil.toHex(derivedKey1.getEncoded()));
 		logger.log(Level.INFO, "      with salt: "+StringUtil.toHex(derivedKey1.getSalt()));
@@ -210,7 +211,7 @@ public class CipherUtilTest {
 	}
 	
 	private void testEncrypt(byte[] originalData, List<CipherSpec> cipherSpecs) throws IOException {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] ciphertext = CipherUtil.encrypt(
 			new ByteArrayInputStream(originalData), 
@@ -224,8 +225,8 @@ public class CipherUtilTest {
 		assertTrue(Arrays.equals(originalData, plaintext));	
 	}
 	
-	private SaltedSecretKey createDummyMasterKey() {
-		return new SaltedSecretKey(
+	private MasterKey createDummyMasterKey() {
+		return new MasterKey(
 			new SecretKeySpec(
 				StringUtil.fromHex("44fda24d53b29828b62c362529bd9df5c8a92c2736bcae3a28b3d7b44488e36e246106aa5334813028abb2048eeb5e177df1c702d93cf82aeb7b6d59a8534ff0"),
 				"AnyAlgorithm"

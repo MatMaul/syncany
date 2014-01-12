@@ -55,7 +55,7 @@ import org.syncany.config.Logging;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.database.ChunkEntry.ChunkChecksum;
 import org.syncany.database.MultiChunkEntry.MultiChunkId;
 import org.syncany.tests.util.TestFileUtil;
@@ -68,7 +68,7 @@ public class FrameworkCombinationTest {
 	private File tempDir;	
 	private List<FrameworkCombination> combinations;
 
-	private SaltedSecretKey masterKey;
+	private MasterKey masterKey;
 	
 	static {
 		Logging.init();
@@ -76,7 +76,7 @@ public class FrameworkCombinationTest {
 	
 	@Before
 	public void initMasterKey() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		masterKey = CipherUtil.createMasterKey("some password");
+		masterKey = CipherUtil.createMasterKey("some password", "some other password");
 	}
 	
 	@Test

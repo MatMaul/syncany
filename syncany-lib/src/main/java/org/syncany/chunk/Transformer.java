@@ -128,4 +128,8 @@ public abstract class Transformer {
 	public void setNextTransformer(Transformer nextTransformer) {
 		this.nextTransformer = nextTransformer;
 	}
+	
+	public Transformer getNextTransformer() {
+		return nextTransformer;
+	}
 }

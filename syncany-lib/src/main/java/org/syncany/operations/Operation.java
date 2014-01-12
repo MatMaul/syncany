@@ -69,7 +69,7 @@ public abstract class Operation {
 		
 		DatabaseDAO dao = new XmlDatabaseDAO(config.getTransformer());
 		dao.save(db, fromVersion, toVersion, localDatabaseFile);
-	}		
+	}	
 	
 	protected Database loadLocalDatabase() throws IOException {
 		return loadLocalDatabase(config.getDatabaseFile());

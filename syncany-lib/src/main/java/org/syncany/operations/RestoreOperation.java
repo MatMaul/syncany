@@ -46,7 +46,6 @@ import org.syncany.database.PartialFileHistory;
 import org.syncany.operations.actions.FileSystemAction;
 import org.syncany.operations.actions.NewFileSystemAction;
 import org.syncany.util.FileUtil;
-import org.syncany.util.StringUtil;
 
 /**
  * TODO [medium] Quick and dirty implementation of RestoreOperation, duplicate code with DownOperation
@@ -234,7 +233,7 @@ public class RestoreOperation extends Operation {
 			transferManager.download(remoteMultiChunkFile, localEncryptedMultiChunkFile);
 
 			logger.log(Level.INFO, "  + Decrypting multichunk " + multiChunkEntry.getId() + " ...");
-			InputStream multiChunkInputStream = config.getTransformer().createInputStream(new FileInputStream(localEncryptedMultiChunkFile));
+			InputStream multiChunkInputStream = config.getUnsignedTransformer().createInputStream(new FileInputStream(localEncryptedMultiChunkFile));
 			OutputStream decryptedMultiChunkOutputStream = new FileOutputStream(localDecryptedMultiChunkFile);
 
 			// TODO [medium] Calculate checksum while writing file, to verify correct content

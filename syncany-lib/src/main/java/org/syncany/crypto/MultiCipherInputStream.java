@@ -28,8 +28,9 @@ import javax.crypto.Mac;
 import javax.crypto.SecretKey;
 
 import org.syncany.util.StringUtil;
+import org.syncany.util.ThrowingInputStream;
 
-public class MultiCipherInputStream extends InputStream {
+public class MultiCipherInputStream extends ThrowingInputStream {
 	private InputStream underlyingInputStream;
 
 	private InputStream cipherInputStream;
@@ -158,4 +159,5 @@ public class MultiCipherInputStream extends InputStream {
 		
 		return abyte;
 	}
+
 }

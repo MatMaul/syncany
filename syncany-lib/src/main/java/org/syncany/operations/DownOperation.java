@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -57,6 +58,7 @@ import org.syncany.operations.actions.FileCreatingFileSystemAction;
 import org.syncany.operations.actions.FileSystemAction;
 import org.syncany.operations.actions.FileSystemAction.InconsistentFileSystemException;
 import org.syncany.util.FileUtil;
+import org.syncany.util.sign.SignException;
 
 /**
  * The down operation implements a central part of Syncany's business logic. It determines
@@ -140,9 +142,21 @@ public class DownOperation extends Operation {
 
 		// 2. Download the remote databases to the local cache folder
 		List<File> unknownRemoteDatabasesInCache = downloadUnknownRemoteDatabases(transferManager, unknownRemoteDatabases);
+		
+		// 7. Write names of newly analyzed remote databases (so we don't download them again)
+		writeAlreadyDownloadedDatabasesListFromFile(unknownRemoteDatabases);
 
 		// 3. Read version headers (vector clocks)
 		DatabaseBranches unknownRemoteBranches = readUnknownDatabaseVersionHeaders(unknownRemoteDatabasesInCache);
+		
+		if (unknownRemoteDatabasesInCache.isEmpty()) {
+			logger.log(Level.INFO, "* Nothing new (wrongly signed file(s) ignored). Skipping down operation.");
+			result.setResultCode(DownResultCode.OK_NO_REMOTE_CHANGES);
+
+			disconnectTransferManager();
+
+			return result;
+		}
 
 		// 4. Determine winner branch
 		DatabaseBranch winnersBranch = determineWinnerBranch(localDatabase, unknownRemoteBranches);
@@ -153,9 +167,6 @@ public class DownOperation extends Operation {
 
 		// 6. Apply winner's branch
 		applyWinnersBranch(winnersBranch, unknownRemoteDatabasesInCache);
-
-		// 7. Write names of newly analyzed remote databases (so we don't download them again)
-		writeAlreadyDownloadedDatabasesListFromFile(unknownRemoteDatabases);
 
 		disconnectTransferManager();
 
@@ -382,7 +393,7 @@ public class DownOperation extends Operation {
 			result.downloadedMultiChunks.add(multiChunkEntry);
 
 			logger.log(Level.INFO, "  + Decrypting multichunk " + multiChunkEntry.getId() + " ...");
-			InputStream multiChunkInputStream = config.getTransformer().createInputStream(new FileInputStream(localEncryptedMultiChunkFile));
+			InputStream multiChunkInputStream = config.getUnsignedTransformer().createInputStream(new FileInputStream(localEncryptedMultiChunkFile));
 			OutputStream decryptedMultiChunkOutputStream = new FileOutputStream(localDecryptedMultiChunkFile);
 
 			// TODO [medium] Calculate checksum while writing file, to verify correct content
@@ -455,19 +466,30 @@ public class DownOperation extends Operation {
 		DatabaseBranches unknownRemoteBranches = new DatabaseBranches();
 		DatabaseDAO dbDAO = new XmlDatabaseDAO(config.getTransformer());
 
-		for (File remoteDatabaseFileInCache : remoteDatabases) {
+		Iterator<File> remoteDatabasesIt = remoteDatabases.iterator();
+		while (remoteDatabasesIt.hasNext()) {
+			File remoteDatabaseFileInCache = remoteDatabasesIt.next();
 			Database remoteDatabase = new Database(); // Database cannot be reused, since these might be different clients
 
 			DatabaseRemoteFile remoteDatabaseFile = new DatabaseRemoteFile(remoteDatabaseFileInCache.getName());
-			dbDAO.load(remoteDatabase, remoteDatabaseFileInCache, true); // only load headers!
-			List<DatabaseVersion> remoteDatabaseVersions = remoteDatabase.getDatabaseVersions();
+			try {
+				dbDAO.load(remoteDatabase, remoteDatabaseFileInCache, true); // only load headers!
+				List<DatabaseVersion> remoteDatabaseVersions = remoteDatabase.getDatabaseVersions();
 
-			// Populate branches
-			DatabaseBranch remoteClientBranch = unknownRemoteBranches.getBranch(remoteDatabaseFile.getClientName(), true);
+				// Populate branches
+				DatabaseBranch remoteClientBranch = unknownRemoteBranches.getBranch(remoteDatabaseFile.getClientName(), true);
 
-			for (DatabaseVersion remoteDatabaseVersion : remoteDatabaseVersions) {
-				DatabaseVersionHeader header = remoteDatabaseVersion.getHeader();
-				remoteClientBranch.add(header);
+				for (DatabaseVersion remoteDatabaseVersion : remoteDatabaseVersions) {
+					DatabaseVersionHeader header = remoteDatabaseVersion.getHeader();
+					remoteClientBranch.add(header);
+				}
+			} catch (IOException e) {
+				
+				if (!(e.getCause() instanceof SignException)) {
+					throw e;
+				}
+				logger.log(Level.INFO, "- Wrongly signed database " + remoteDatabaseFileInCache.getName() + " ignored.");
+				remoteDatabasesIt.remove();
 			}
 		}
 

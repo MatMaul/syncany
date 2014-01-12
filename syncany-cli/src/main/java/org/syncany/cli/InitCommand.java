@@ -21,7 +21,6 @@ import static java.util.Arrays.asList;
 
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +30,7 @@ import joptsimple.OptionSet;
 import joptsimple.OptionSpec;
 
 import org.syncany.chunk.CipherTransformer;
+import org.syncany.chunk.Ed25519SignTransformer;
 import org.syncany.chunk.FixedChunker;
 import org.syncany.chunk.GzipTransformer;
 import org.syncany.chunk.ZipMultiChunker;
@@ -43,7 +43,7 @@ import org.syncany.config.to.RepoTO.TransformerTO;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.operations.InitOperation.InitOperationListener;
+import org.syncany.operations.AbstractInitOperation.InitOperationListener;
 import org.syncany.operations.InitOperation.InitOperationOptions;
 import org.syncany.operations.InitOperation.InitOperationResult;
 import org.syncany.util.StringUtil;
@@ -51,8 +51,8 @@ import org.syncany.util.StringUtil.StringJoinListener;
 
 public class InitCommand extends AbstractInitCommand implements InitOperationListener {
 	public static final int REPO_ID_LENGTH = 32;
-	public static final int PASSWORD_MIN_LENGTH = 8;
-	public static final int PASSWORD_WARN_LENGTH = 12;
+	private String encryptPassword;
+	private String signaturePassword;
 	
 	@Override
 	public CommandScope getRequiredCommandScope() {	
@@ -87,7 +87,6 @@ public class InitCommand extends AbstractInitCommand implements InitOperationLis
 		boolean encryptionEnabled = !options.has(optionNoEncryption);
 		boolean gzipEnabled = !options.has(optionNoGzip);
 		
-		String password = null;
 		List<CipherSpec> cipherSpecs = getCipherSuites(encryptionEnabled, advancedModeEnabled);
 		
 		ChunkerTO chunkerTO = getDefaultChunkerTO();
@@ -95,7 +94,7 @@ public class InitCommand extends AbstractInitCommand implements InitOperationLis
 		List<TransformerTO> transformersTO = getTransformersTO(gzipEnabled, cipherSpecs);
 				
 		if (encryptionEnabled) {			
-			password = askPasswordAndConfirm();
+			askPasswordsAndConfirm();
 		}
 			
 		ConfigTO configTO = createConfigTO(localDir, null, connectionTO);		
@@ -107,7 +106,8 @@ public class InitCommand extends AbstractInitCommand implements InitOperationLis
 		
 		operationOptions.setEncryptionEnabled(encryptionEnabled);
 		operationOptions.setCipherSpecs(cipherSpecs);
-		operationOptions.setPassword(password);
+		operationOptions.setEncryptPassword(encryptPassword);
+		operationOptions.setSignaturePassword(signaturePassword);
 		
 		return operationOptions;
 	}		
@@ -124,8 +124,8 @@ public class InitCommand extends AbstractInitCommand implements InitOperationLis
 		}
 
 		if (cipherSuites.size() > 0) {	
-			TransformerTO cipherTransformerTO = getCipherTransformerTO(cipherSuites);			
-			transformersTO.add(cipherTransformerTO);
+			transformersTO.add(getCipherTransformerTO(cipherSuites));
+			transformersTO.add(getSignatureTransformerTO());
 		}
 		
 		return transformersTO;
@@ -223,47 +223,24 @@ public class InitCommand extends AbstractInitCommand implements InitOperationLis
 		return cipherSpecs;		
 	}
 	
-	protected String askPasswordAndConfirm() {
+	protected void askPasswordsAndConfirm() {
 		out.println();
 		out.println("The password is used to encrypt data on the remote storage.");
 		out.println("Wisely choose you must!");
 		out.println();
 		
-		String password = null;
+		encryptPassword = askPassword("Encrypt Password: ", true, false);
 		
-		while (password == null) {
-			char[] passwordChars = console.readPassword("Password: ");
-			char[] confirmPasswordChars = console.readPassword("Confirm: ");
-			
-			if (!Arrays.equals(passwordChars, confirmPasswordChars)) {
-				out.println("ERROR: Passwords do not match.");
-				out.println();
-				
-				continue;
-			} 
-			
-			if (passwordChars.length < PASSWORD_MIN_LENGTH) {
-				out.println("ERROR: This password is not allowed (too short, min. "+PASSWORD_MIN_LENGTH+" chars)");
-				out.println();
-				
-				continue;
-			}
-			
-			if (passwordChars.length < PASSWORD_WARN_LENGTH) {
-				out.println();
-				out.println("WARNING: The password is a bit short. Less than "+PASSWORD_WARN_LENGTH+" chars are not future-proof!");
-				String yesno = console.readLine("Are you sure you want to use it (y/n)? ");
-				
-				if (!yesno.toLowerCase().startsWith("y")) {
-					out.println();
-					continue;
-				}
-			}
-			
-			password = new String(passwordChars);			
-		}	
+		if (encryptPassword == null) {
+			out.println("The specified password");
+		}
 		
-		return password;
+		out.println();
+		out.println("A different password can be used for write access, this can be left empty otherwise");
+		out.println();
+		
+		signaturePassword = askPassword("Signature Password: ", true, false);
+		
 	}
 	
 	protected RepoTO createRepoTO(ChunkerTO chunkerTO, MultiChunkerTO multiChunkerTO, List<TransformerTO> transformersTO) throws Exception {
@@ -311,6 +288,13 @@ public class InitCommand extends AbstractInitCommand implements InitOperationLis
 		return gzipTransformerTO;				
 	}
 	
+	protected TransformerTO getSignatureTransformerTO() {		
+		TransformerTO signatureTransformerTO = new TransformerTO();
+		signatureTransformerTO.setType(Ed25519SignTransformer.TYPE);
+		
+		return signatureTransformerTO;				
+	}
+	
 	private TransformerTO getCipherTransformerTO(List<CipherSpec> cipherSpec) {
 		String cipherSuitesIdStr = StringUtil.join(cipherSpec, ",", new StringJoinListener<CipherSpec>() {
 			@Override
@@ -334,5 +318,15 @@ public class InitCommand extends AbstractInitCommand implements InitOperationLis
 	public void notifyGenerateMasterKey() {
 		out.println();
 		out.println("Generating master key from password (this might take a while) ...");
+	}
+
+	@Override
+	public String getEncryptPasswordCallback() {
+		return encryptPassword;
+	}
+
+	@Override
+	public String getSignaturePasswordCallback() {
+		return signaturePassword;
 	}
 }

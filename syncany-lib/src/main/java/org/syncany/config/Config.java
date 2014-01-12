@@ -20,6 +20,8 @@ package org.syncany.config;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 
 import org.syncany.chunk.Chunker;
 import org.syncany.chunk.CipherTransformer;
@@ -27,6 +29,7 @@ import org.syncany.chunk.FixedChunker;
 import org.syncany.chunk.MimeTypeChunker;
 import org.syncany.chunk.MultiChunker;
 import org.syncany.chunk.NoTransformer;
+import org.syncany.chunk.SignatureTransformer;
 import org.syncany.chunk.Transformer;
 import org.syncany.chunk.ZipMultiChunker;
 import org.syncany.config.to.ConfigTO;
@@ -36,7 +39,7 @@ import org.syncany.connection.plugins.Connection;
 import org.syncany.connection.plugins.Plugin;
 import org.syncany.connection.plugins.Plugins;
 import org.syncany.connection.plugins.StorageException;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.util.FileUtil;
 import org.syncany.util.StringUtil;
 
@@ -68,13 +71,15 @@ public class Config {
 	private File databaseDir;
 	private File logDir;
 	
-	private SaltedSecretKey masterKey;
+	private MasterKey masterKey;
+	private byte[] verifyKey;
 
 	private Cache cache;	
 	private Connection connection;
     private Chunker chunker;
     private MultiChunker multiChunker;
     private Transformer transformer;
+    private Transformer unsignedTransformer;
       
     static {    	    	
     	Logging.init();
@@ -83,6 +88,7 @@ public class Config {
 	public Config(File aLocalDir, ConfigTO configTO, RepoTO repoTO) throws ConfigException {		
 		initNames(configTO);
 		initMasterKey(configTO);
+		initVerifyKey(repoTO);
 		initDirectories(aLocalDir);
 		initCache();
 		initRepo(repoTO);
@@ -100,6 +106,10 @@ public class Config {
 	
 	private void initMasterKey(ConfigTO configTO) {
 		masterKey = configTO.getMasterKey(); // can be null			
+	}
+	
+	private void initVerifyKey(RepoTO repoTO) {
+		verifyKey = repoTO.getVerifyKey();		
 	}
 
 	private void initDirectories(File aLocalDir) throws ConfigException {
@@ -161,35 +171,56 @@ public class Config {
 	private void initTransformers(RepoTO repoTO) throws Exception {
 		if (repoTO.getTransformerTOs() == null || repoTO.getTransformerTOs().size() == 0) {
 			transformer = new NoTransformer();
+			unsignedTransformer = transformer;
 		}
 		else {			
 			ArrayList<TransformerTO> transformerTOs = new ArrayList<TransformerTO>(repoTO.getTransformerTOs());
-			Transformer lastTransformer = null;
+			transformer = initTransformer(transformerTOs, false);
+			unsignedTransformer = initTransformer(transformerTOs, true);
+		}
+	}
+	
+	private Transformer initTransformer(List<TransformerTO> transformerTOs, boolean unsigned) throws Exception {
+		Transformer lastTransformer = null;
+		
+		for (int i=transformerTOs.size()-1; i>=0; i--) {
+			TransformerTO transformerTO = transformerTOs.get(i);
+			Transformer transformer = Transformer.getInstance(transformerTO.getType());
 			
-			for (int i=transformerTOs.size()-1; i>=0; i--) {
-				TransformerTO transformerTO = transformerTOs.get(i);
-				Transformer transformer = Transformer.getInstance(transformerTO.getType());
-				
-				if (transformer == null) {
-					throw new Exception("Cannot find transformer '"+transformerTO.getType()+"'");
-				}
-				
-				if (transformer instanceof CipherTransformer) { // Dirty workaround
-					transformerTO.getSettings().put(CipherTransformer.PROPERTY_MASTER_KEY, StringUtil.toHex(getMasterKey().getEncoded()));
-					transformerTO.getSettings().put(CipherTransformer.PROPERTY_MASTER_KEY_SALT, StringUtil.toHex(getMasterKey().getSalt()));
-				}
-				
-				transformer.init(transformerTO.getSettings());
-				
-				if (lastTransformer != null) {
-					transformer.setNextTransformer(lastTransformer);
-				}
-				
-				lastTransformer = transformer;
+			if (transformer == null) {
+				throw new Exception("Cannot find transformer '"+transformerTO.getType()+"'");
 			}
 			
-			transformer = lastTransformer;
+			if (transformer instanceof CipherTransformer) { // Dirty workaround
+				transformerTO.getSettings().put(CipherTransformer.PROPERTY_ENCRYPT_KEY, StringUtil.toHex(getMasterKey().getEncryptKey().getEncoded()));
+				transformerTO.getSettings().put(CipherTransformer.PROPERTY_KEY_SALT, StringUtil.toHex(getMasterKey().getSalt()));
+			}
+			
+			if (transformer instanceof SignatureTransformer) { // Dirty workaround
+				if (unsigned) {
+					continue;
+				}
+				if (transformerTO.getSettings() == null) {
+					transformerTO.setSettings(new HashMap<String, String>());
+				}
+				if (getMasterKey().getSigningKey() != null) {
+					transformerTO.getSettings().put(SignatureTransformer.PROPERTY_SIGNING_KEY, StringUtil.toHex(getMasterKey().getSigningKey().getEncoded()));
+				}
+				if (getVerifyKey() != null) {
+					transformerTO.getSettings().put(SignatureTransformer.PROPERTY_VERIFY_KEY, StringUtil.toHex(getVerifyKey()));
+				}
+			}
+			
+			transformer.init(transformerTO.getSettings());
+			
+			if (lastTransformer != null) {
+				transformer.setNextTransformer(lastTransformer);
+			}
+			
+			lastTransformer = transformer;
 		}
+		
+		return lastTransformer;
 	}
 
 	private void initConnection(ConfigTO configTO) throws ConfigException {
@@ -275,6 +306,14 @@ public class Config {
 		this.multiChunker = multiChunker;
 	}
 
+	public Transformer getUnsignedTransformer() {
+		return unsignedTransformer;
+	}
+
+	public void setUnsignedTransformer(Transformer unsignedTransformer) {
+		this.unsignedTransformer = unsignedTransformer;
+	}
+	
 	public Transformer getTransformer() {
 		return transformer;
 	}
@@ -299,12 +338,12 @@ public class Config {
 		return databaseDir;
 	}	
 
-	public SaltedSecretKey getMasterKey() {
+	public MasterKey getMasterKey() {
 		return masterKey;
 	}
 
-	public void setMasterKey(SaltedSecretKey masterKey) {
-		this.masterKey = masterKey;
+	public byte[] getVerifyKey() {
+		return verifyKey;
 	}
 
 	public File getDatabaseFile() {

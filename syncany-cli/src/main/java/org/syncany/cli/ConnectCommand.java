@@ -38,19 +38,21 @@ import org.syncany.config.to.ConfigTO.ConnectionTO;
 import org.syncany.connection.plugins.Plugin;
 import org.syncany.connection.plugins.Plugins;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
-import org.syncany.operations.ConnectOperation.ConnectOperationListener;
+import org.syncany.crypto.MasterKey;
+import org.syncany.operations.AbstractInitOperation.InitOperationListener;
 import org.syncany.operations.ConnectOperation.ConnectOperationOptions;
 import org.syncany.operations.ConnectOperation.ConnectOperationResult;
 
-public class ConnectCommand extends AbstractInitCommand implements ConnectOperationListener {
+public class ConnectCommand extends AbstractInitCommand implements InitOperationListener {
 	private static final Pattern LINK_PATTERN = Pattern.compile("^syncany://storage/1/(?:(not-encrypted/)(.+)|([^-]+-(.+)))$");
 	private static final int LINK_PATTERN_GROUP_NOT_ENCRYPTED_FLAG = 1;
 	private static final int LINK_PATTERN_GROUP_NOT_ENCRYPTED_ENCODED = 2;
 	private static final int LINK_PATTERN_GROUP_ENCRYPTED_MASTER_KEY_SALT = 3;
 	private static final int LINK_PATTERN_GROUP_ENCRYPTED_ENCODED = 4;
 	
-	private SaltedSecretKey masterKey;
+	private MasterKey masterKey;
+	private String encryptPassword;
+	private String signaturePassword;
 	
 	public ConnectCommand() {
 		super();
@@ -74,7 +76,7 @@ public class ConnectCommand extends AbstractInitCommand implements ConnectOperat
 	private ConnectOperationOptions parseConnectOptions(String[] operationArguments) throws OptionException, Exception {
 		ConnectOperationOptions operationOptions = new ConnectOperationOptions();
 
-		OptionParser parser = new OptionParser();			
+		OptionParser parser = new OptionParser();	
 		OptionSpec<String> optionPlugin = parser.acceptsAll(asList("p", "plugin")).withRequiredArg();
 		OptionSpec<String> optionPluginOpts = parser.acceptsAll(asList("P", "plugin-option")).withRequiredArg();
 		
@@ -134,11 +136,11 @@ public class ConnectCommand extends AbstractInitCommand implements ConnectOperat
 			
 			byte[] masterKeySalt = Base64.decodeBase64(masterKeySaltStr);
 			byte[] ciphertextBytes = Base64.decodeBase64(ciphertext);
-
-			String password = askPassword();
 			
-			notifyCreateMasterKey();
-			masterKey = CipherUtil.createMasterKey(password, masterKeySalt);
+			askPasswords();
+
+			notifyGenerateMasterKey();
+			masterKey = CipherUtil.createMasterKey(encryptPassword, signaturePassword, masterKeySalt);
 			
 			ByteArrayInputStream encryptedStorageConfig = new ByteArrayInputStream(ciphertextBytes);
 			
@@ -162,27 +164,43 @@ public class ConnectCommand extends AbstractInitCommand implements ConnectOperat
 		
 		return connectionTO;			
 	}
-
-	private String askPassword() { 
-		out.println();
-		
-		String password = null;
-		
-		while (password == null) {
-			char[] passwordChars = console.readPassword("Password: ");			
-			password = new String(passwordChars);			
-		}	
-		
-		return password;
+	
+	private void askPasswords() {
+		encryptPassword = askPassword("Encrypt Password: ", false, false);
+		Boolean writeAccess = null;
+		while (writeAccess == null) {
+			char[] res = console.readPassword("Do you have write access on this repository ? (y/n)");
+			String resStr = new String(res);
+			if (resStr.toLowerCase().startsWith("y")) {
+				writeAccess = true;
+			}
+			if (resStr.toLowerCase().startsWith("n")) {
+				writeAccess = false;
+			}
+		}
+		if (writeAccess) {
+			signaturePassword = askPassword("Signature Password (can be empty): ", false, false);
+		}
+	}
+	
+	@Override
+	public String getEncryptPasswordCallback() {
+		if (encryptPassword == null) {
+			askPasswords();
+		}
+		return encryptPassword;
+	}
+	
+	@Override
+	public String getSignaturePasswordCallback() {
+		if (encryptPassword == null) {
+			askPasswords();
+		}
+		return signaturePassword;
 	}
 
 	@Override
-	public String getPasswordCallback() {
-		return askPassword();
-	}
-
-	@Override
-	public void notifyCreateMasterKey() {
+	public void notifyGenerateMasterKey() {
 		out.println();
 		out.println("Creating master key from password (this might take a while) ...");
 	}

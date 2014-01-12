@@ -45,7 +45,6 @@ import org.syncany.database.FileVersion.FileType;
 import org.syncany.database.MultiChunkEntry.MultiChunkId;
 import org.syncany.database.PartialFileHistory.FileHistoryId;
 import org.syncany.database.VectorClock.VectorClockComparison;
-import org.syncany.util.FileUtil;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
@@ -565,7 +564,7 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 						fileVersion.setPosixPermissions(posixPermissions);
 					}
 	
-					fileHistory.addFileVersion(fileVersion);							
+					fileHistory.addFileVersion(fileVersion);		
 				}			
 			}
 		}
@@ -601,7 +600,9 @@ public class XmlDatabaseDAO implements DatabaseDAO {
 					multiChunk = null;
 				}	
 				else if (elementPath.equalsIgnoreCase("/database/databaseVersions/databaseVersion/fileHistories/fileHistory")) {
-					databaseVersion.addFileHistory(fileHistory);
+					if (fileHistory.getLastVersion() != null) {
+						databaseVersion.addFileHistory(fileHistory);
+					}
 					fileHistory = null;
 				}	
 				else {

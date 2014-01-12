@@ -22,12 +22,15 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.Test;
 import org.syncany.cli.CommandLineClient;
 import org.syncany.config.Config;
 import org.syncany.tests.util.TestCliUtil;
 import org.syncany.tests.util.TestConfigUtil;
+
+import com.google.common.collect.Sets;
 
 public class StatusCommandTest {		
 	@Test
@@ -48,8 +51,9 @@ public class StatusCommandTest {
 		
 		// Test
 		assertEquals("Different number of output lines expected.", 2, cliOut.length);
-		assertEquals("? somefolder1", cliOut[0]);
-		assertEquals("? somefolder2", cliOut[1]);
+		Set<String> outs = Sets.newHashSet(cliOut);
+		assertTrue(outs.contains("? somefolder1"));
+		assertTrue(outs.contains("? somefolder2"));
 		// TODO [medium] This test case does NOT test the loglevel option
 		
 		// Cleanup
@@ -78,8 +82,9 @@ public class StatusCommandTest {
 		// Test		
 		assertTrue("Log file should exist.", tempLogFile.exists());
 		assertEquals(2, cliOut.length);
-		assertEquals("? somefolder1", cliOut[0]);
-		assertEquals("? somefolder2", cliOut[1]);
+		Set<String> outs = Sets.newHashSet(cliOut);
+		assertTrue(outs.contains("? somefolder1"));
+		assertTrue(outs.contains("? somefolder2"));
 		
 		// Cleanup
 		TestCliUtil.deleteTestLocalConfigAndData(clientA);		

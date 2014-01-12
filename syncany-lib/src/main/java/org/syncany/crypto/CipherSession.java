@@ -59,7 +59,7 @@ public class CipherSession {
 	private static final int DEFAULT_SECRET_KEY_READ_CACHE_SIZE = 20;
 	private static final int DEFAULT_SECRET_KEY_WRITE_REUSE_COUNT = 100;
 	
-	private SecretKey masterKey;	
+	private MasterKey masterKey;	
 	
 	private Map<CipherSpecWithSalt, SecretKeyCacheEntry> secretKeyReadCache;
 	private int secretKeyReadCacheSize;
@@ -77,7 +77,7 @@ public class CipherSession {
 	 *  
 	 * @param masterKey The master key, used for deriving new read/write keys
 	 */
-	public CipherSession(SaltedSecretKey masterKey) {
+	public CipherSession(MasterKey masterKey) {
 		this(masterKey, DEFAULT_SECRET_KEY_READ_CACHE_SIZE, DEFAULT_SECRET_KEY_WRITE_REUSE_COUNT);
 	}
 	
@@ -92,7 +92,7 @@ public class CipherSession {
 	 * @param secretKeyReadCacheSize Number of read keys to store in the cache (higher means more performance, but more memory usage)
 	 * @param secretKeyWriteReuseCount Number of times to reuse a write key (higher means more performance, but lower security)
 	 */
-	public CipherSession(SaltedSecretKey masterKey, int secretKeyReadCacheSize, int secretKeyWriteReuseCount) {
+	public CipherSession(MasterKey masterKey, int secretKeyReadCacheSize, int secretKeyWriteReuseCount) {
 		this.masterKey = masterKey;
 
 		this.secretKeyReadCache = new LinkedHashMap<CipherSpecWithSalt, SecretKeyCacheEntry>();
@@ -105,8 +105,8 @@ public class CipherSession {
 	/**
 	 * Returns the master key
 	 */
-	public SecretKey getMasterKey() {
-		return masterKey;
+	public SecretKey getEncryptKey() {
+		return masterKey.getEncryptKey();
 	}
 
 	/**
@@ -200,7 +200,7 @@ public class CipherSession {
 	}
 	
 	private SaltedSecretKey createSaltedSecretKey(CipherSpec cipherSpec, byte[] salt) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		return CipherUtil.createDerivedKey(masterKey, salt, cipherSpec);					
+		return CipherUtil.createDerivedKey(masterKey.getEncryptKey(), salt, cipherSpec);					
 	}
 
 	private static class SecretKeyCacheEntry {
