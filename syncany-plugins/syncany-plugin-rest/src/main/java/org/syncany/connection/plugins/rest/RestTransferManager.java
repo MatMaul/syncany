@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2013 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,10 @@ import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
 import org.jets3t.service.ServiceException;
+import org.jets3t.service.StorageService;
+import org.jets3t.service.acl.CanonicalGrantee;
+import org.jets3t.service.acl.GranteeInterface;
+import org.jets3t.service.acl.Permission;
 import org.jets3t.service.impl.rest.httpclient.RestStorageService;
 import org.jets3t.service.model.StorageBucket;
 import org.jets3t.service.model.StorageObject;
@@ -102,13 +106,15 @@ public abstract class RestTransferManager extends AbstractTransferManager {
 
 	@Override
 	public void disconnect() throws StorageException {
-		// Fressen.
+		// Nothing
 	}
 
 	@Override
-	public void init() throws StorageException {
+	public void init(boolean createIfRequired) throws StorageException {
 		connect();
 
+		// TODO [medium] createIfRequired is not used and createBucket() always creates a bucket! This is not the correct behavior!
+		
 		try {
 			StorageObject multichunkPathFolder = new StorageObject(multichunkPath + "/"); // Slash ('/') makes it a folder
 			service.putObject(bucket.getName(), multichunkPathFolder);
@@ -248,6 +254,36 @@ public abstract class RestTransferManager extends AbstractTransferManager {
 		}
 		else {
 			return null;
+		}
+	}
+	
+	@Override
+	// TODO [high] This code is untested!
+	public boolean hasWriteAccess() throws StorageException {
+		GranteeInterface grantee = new CanonicalGrantee(bucket.getOwner().getId());
+		return bucket.getAcl().hasGranteeAndPermission(grantee, Permission.PERMISSION_WRITE);
+	}
+
+	@Override
+	// TODO [high] This code is untested!
+	public boolean repoExists() throws StorageException {
+		try {
+			int status = service.checkBucketStatus(bucket.getName());
+			return (status != StorageService.BUCKET_STATUS__DOES_NOT_EXIST);
+		}
+		catch (ServiceException e) {
+			throw new StorageException(e);
+		}
+	}
+	
+	@Override
+	// TODO [high] This code is untested!
+	public boolean repoIsEmpty() throws StorageException {
+		try {
+			return service.listObjects(bucket.getName()).length == 0;
+		}
+		catch (ServiceException e) {
+			throw new StorageException(e);
 		}
 	}
 }

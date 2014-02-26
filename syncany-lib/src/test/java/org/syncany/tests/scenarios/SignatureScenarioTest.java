@@ -57,6 +57,7 @@ public class SignatureScenarioTest {
 
 	@BeforeClass
 	public static void before() throws Exception {
+		TestConfigUtil.setCrypto(true);
 		// Setup 
 		Connection testConnection = TestConfigUtil.createTestLocalConnection();
 
@@ -82,20 +83,6 @@ public class SignatureScenarioTest {
 			assertTrue("Client C: B-file1.jpg not synchronized", res.getChangeSet().getNewFiles().contains("B-file1.jpg"));
 
 			unauthorizedClientC.createNewFile("C-file1.jpg", 10000);
-
-
-			try {
-				unauthorizedClientC.up();
-				fail("Up should have failed for the unauthorized client");
-			} catch (IOException expectedException) {
-				if (!(expectedException.getCause() instanceof SignException)) {
-					throw expectedException;
-				}
-			}
-
-			// bypass a signature verification exception to force upload of untrusted data
-			Transformer signTransformer = unauthorizedClientC.getConfig().getTransformer().getNextTransformer().getNextTransformer();
-			verifyKeyField.set(signTransformer, null);
 			unauthorizedClientC.up();
 
 			res = clientB.down();

@@ -19,27 +19,26 @@ package org.syncany.config;
 
 import java.io.File;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
 import org.syncany.chunk.Chunker;
 import org.syncany.chunk.CipherTransformer;
 import org.syncany.chunk.FixedChunker;
-import org.syncany.chunk.MimeTypeChunker;
 import org.syncany.chunk.MultiChunker;
 import org.syncany.chunk.NoTransformer;
 import org.syncany.chunk.SignatureTransformer;
 import org.syncany.chunk.Transformer;
-import org.syncany.chunk.ZipMultiChunker;
 import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.RepoTO;
+import org.syncany.config.to.RepoTO.MultiChunkerTO;
 import org.syncany.config.to.RepoTO.TransformerTO;
 import org.syncany.connection.plugins.Connection;
 import org.syncany.connection.plugins.Plugin;
 import org.syncany.connection.plugins.Plugins;
 import org.syncany.connection.plugins.StorageException;
 import org.syncany.crypto.MasterKey;
+import org.syncany.database.DatabaseConnectionFactory;
 import org.syncany.util.FileUtil;
 import org.syncany.util.StringUtil;
 
@@ -145,9 +144,14 @@ public class Config {
 	}
 
 	private void initChunker(RepoTO repoTO) throws Exception {
-		// TODO [feature request] make chunking options configurable
-		chunker = new MimeTypeChunker(
-			new FixedChunker(16*1024, "SHA1"),
+		// TODO [feature request] make chunking options configurable, something like this:
+		//  chunker = Chunker.getInstance(repoTO.getChunker().getType());
+		//  chunker.init(repoTO.getChunker().getSettings());
+		
+		chunker = new FixedChunker(2*1024*1024, "SHA1");
+		
+		/*new MimeTypeChunker(
+			new FixedChunker(64*1024, "SHA1"),
 			new FixedChunker(2*1024*1024, "SHA1"),
 			Arrays.asList(new String[] {
 				"application/x-gzip",
@@ -157,24 +161,28 @@ public class Config {
 				"application/octet-stream",
 				"application/x-sharedlib",
 				"application/x-executable",
+				"application/x-iso9660-image",
 				"image/.+",
 				"audio/.+",
 				"video/.+",				
 			})
-		);
+		);*/
 	}
 
 	private void initMultiChunker(RepoTO repoTO) {
-		multiChunker = new ZipMultiChunker(2*1024*1024);
+		MultiChunkerTO multiChunkerTO = repoTO.getMultiChunker();
+
+		multiChunker = MultiChunker.getInstance(multiChunkerTO.getType());
+		multiChunker.init(multiChunkerTO.getSettings());
 	}
 
 	private void initTransformers(RepoTO repoTO) throws Exception {
-		if (repoTO.getTransformerTOs() == null || repoTO.getTransformerTOs().size() == 0) {
+		if (repoTO.getTransformers() == null || repoTO.getTransformers().size() == 0) {
 			transformer = new NoTransformer();
 			unsignedTransformer = transformer;
 		}
 		else {			
-			ArrayList<TransformerTO> transformerTOs = new ArrayList<TransformerTO>(repoTO.getTransformerTOs());
+			ArrayList<TransformerTO> transformerTOs = new ArrayList<TransformerTO>(repoTO.getTransformers());
 			transformer = initTransformer(transformerTOs, false);
 			unsignedTransformer = initTransformer(transformerTOs, true);
 		}
@@ -239,6 +247,10 @@ public class Config {
 	    		throw new ConfigException("Cannot initialize storage: "+e.getMessage(), e);
 	    	}
 		}
+	}
+	
+	public java.sql.Connection createDatabaseConnection() {
+		return DatabaseConnectionFactory.createConnection(getDatabaseFile());
 	}
 	
 	public void setCacheDir(File file) {
@@ -350,14 +362,6 @@ public class Config {
 		return new File(databaseDir+File.separator+"local.db");	
 	}
 	
-	public File getDirtyDatabaseFile() {
-		return new File(databaseDir+File.separator+"dirty.db");	
-	}
-	
-	public File getKnownDatabaseListFile() {
-		return new File(databaseDir+File.separator+"knowndbs.list");	
-	}
-
 	public void setDatabaseDir(File databaseDir) {
 		this.databaseDir = databaseDir;
 	}	

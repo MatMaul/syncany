@@ -172,8 +172,9 @@ public class CipherUtil {
 	}
 
 	public static SecretKey createSecretKey(String password, byte[] salt, int keySize) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		logger.log(Level.INFO, "Creating secret key using "+MASTER_KEY_DERIVATION_FUNCTION+" with "+MASTER_KEY_DERIVATION_ROUNDS+" rounds, key size "+keySize+" bit ...");
-		
+		logger.log(Level.INFO, "Creating secret key using {0} with {1} rounds, key size {2} bit ...", new Object[] { MASTER_KEY_DERIVATION_FUNCTION,
+				MASTER_KEY_DERIVATION_ROUNDS, keySize });
+
     	SecretKeyFactory factory = SecretKeyFactory.getInstance(MASTER_KEY_DERIVATION_FUNCTION);
         KeySpec pbeKeySpec = new PBEKeySpec(password.toCharArray(), salt, MASTER_KEY_DERIVATION_ROUNDS, keySize);
         SecretKey encryptKey = factory.generateSecret(pbeKeySpec);

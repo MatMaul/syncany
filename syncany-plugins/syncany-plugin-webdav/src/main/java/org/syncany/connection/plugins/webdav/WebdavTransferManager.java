@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2013 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -91,10 +91,13 @@ public class WebdavTransferManager extends AbstractTransferManager {
 	}
 
 	@Override
-	public void init() throws StorageException {
+	public void init(boolean createIfRequired) throws StorageException {
 		connect();
 
 		try {
+			if (!repoExists() && createIfRequired) {
+				sardine.createDirectory(repoPath);
+			}
 			sardine.createDirectory(multichunkPath);
 			sardine.createDirectory(databasePath);
 		}
@@ -209,6 +212,41 @@ public class WebdavTransferManager extends AbstractTransferManager {
 		}
 		else {
 			return repoPath;
+		}
+	}
+
+	@Override
+	public boolean hasWriteAccess() throws StorageException {
+		//TODO not tested
+		try {
+			sardine.createDirectory(repoPath);
+			sardine.delete(repoPath);
+			return true;
+		}
+		catch (IOException e) {
+			return false;
+		}
+	}
+
+	@Override
+	public boolean repoExists() throws StorageException {
+		//TODO not tested
+		try {
+			return sardine.exists(repoPath);
+		}
+		catch (IOException e) {
+			throw new StorageException(e);
+		}
+	}
+
+	@Override
+	public boolean repoIsEmpty() throws StorageException {
+		//TODO not tested
+		try {
+			return sardine.list(repoPath).size() == 0;
+		}
+		catch (IOException e) {
+			throw new StorageException(e);
 		}
 	}
 }

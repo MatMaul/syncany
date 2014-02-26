@@ -1,6 +1,6 @@
 /*
  * Syncany, www.syncany.org
- * Copyright (C) 2011-2013 Philipp C. Heckel <philipp.heckel@gmail.com> 
+ * Copyright (C) 2011-2014 Philipp C. Heckel <philipp.heckel@gmail.com> 
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,7 +118,7 @@ public class Client {
 	}
 	
 	public UpOperationResult up(UpOperationOptions options) throws Exception {
-		return new UpOperation(config, null, options).execute();
+		return new UpOperation(config, options).execute();
 	}
 	
 	public DownOperationResult down() throws Exception {
@@ -126,7 +126,7 @@ public class Client {
 	}
 	
 	public DownOperationResult down(DownOperationOptions options) throws Exception {
-		return new DownOperation(config, null, options).execute();
+		return new DownOperation(config, options).execute();
 	}
 	
 	public SyncOperationResult sync() throws Exception {
@@ -134,7 +134,7 @@ public class Client {
 	}
 	
 	public SyncOperationResult sync(SyncOperationOptions options) throws Exception {
-		return new SyncOperation(config, null, options).execute();
+		return new SyncOperation(config, options).execute();
 	}
 
 	public ChangeSet status() throws Exception {
@@ -142,7 +142,7 @@ public class Client {
 	}
 	
 	public ChangeSet status(StatusOperationOptions options) throws Exception {
-		return (new StatusOperation(config, null, options).execute()).getChangeSet();		
+		return (new StatusOperation(config, options).execute()).getChangeSet();		
 	}	
 
 	public LsRemoteOperationResult lsRemote() throws Exception {
