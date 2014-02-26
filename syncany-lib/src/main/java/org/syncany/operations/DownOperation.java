@@ -388,7 +388,7 @@ public class DownOperation extends Operation {
 			result.downloadedMultiChunks.add(multiChunkId);
 
 			logger.log(Level.INFO, "  + Decrypting multichunk " + multiChunkId + " ...");
-			InputStream multiChunkInputStream = config.getUnsignedTransformer().createInputStream(new FileInputStream(localEncryptedMultiChunkFile));
+			InputStream multiChunkInputStream = config.getTransformer().createInputStream(new FileInputStream(localEncryptedMultiChunkFile));
 			OutputStream decryptedMultiChunkOutputStream = new FileOutputStream(localDecryptedMultiChunkFile);
 
 			// TODO [medium] Calculate checksum while writing file, to verify correct content

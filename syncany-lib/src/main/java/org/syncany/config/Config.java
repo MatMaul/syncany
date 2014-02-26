@@ -78,7 +78,6 @@ public class Config {
     private Chunker chunker;
     private MultiChunker multiChunker;
     private Transformer transformer;
-    private Transformer unsignedTransformer;
       
     static {    	    	
     	Logging.init();
@@ -179,12 +178,10 @@ public class Config {
 	private void initTransformers(RepoTO repoTO) throws Exception {
 		if (repoTO.getTransformers() == null || repoTO.getTransformers().size() == 0) {
 			transformer = new NoTransformer();
-			unsignedTransformer = transformer;
 		}
 		else {			
 			ArrayList<TransformerTO> transformerTOs = new ArrayList<TransformerTO>(repoTO.getTransformers());
 			transformer = initTransformer(transformerTOs, false);
-			unsignedTransformer = initTransformer(transformerTOs, true);
 		}
 	}
 	
@@ -316,14 +313,6 @@ public class Config {
 
 	public void setMultiChunker(MultiChunker multiChunker) {
 		this.multiChunker = multiChunker;
-	}
-
-	public Transformer getUnsignedTransformer() {
-		return unsignedTransformer;
-	}
-
-	public void setUnsignedTransformer(Transformer unsignedTransformer) {
-		this.unsignedTransformer = unsignedTransformer;
 	}
 	
 	public Transformer getTransformer() {

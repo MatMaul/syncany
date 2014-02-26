@@ -19,20 +19,16 @@ package org.syncany.tests.scenarios;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
 
-import java.io.IOException;
 import java.lang.reflect.Field;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.syncany.chunk.Ed25519SignTransformer;
-import org.syncany.chunk.Transformer;
 import org.syncany.connection.plugins.Connection;
 import org.syncany.operations.DownOperation.DownOperationResult;
 import org.syncany.tests.util.TestClient;
 import org.syncany.tests.util.TestConfigUtil;
-import org.syncany.util.sign.SignException;
 
 /**
  * @author matmaul
@@ -57,7 +53,6 @@ public class SignatureScenarioTest {
 
 	@BeforeClass
 	public static void before() throws Exception {
-		TestConfigUtil.setCrypto(true);
 		// Setup 
 		Connection testConnection = TestConfigUtil.createTestLocalConnection();
 
