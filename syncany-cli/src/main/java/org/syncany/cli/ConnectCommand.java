@@ -127,40 +127,6 @@ public class ConnectCommand extends AbstractInitCommand {
 		return operationOptions;
 	}
 
-//	private ConnectionTO initPluginWithLink(String link) throws Exception {
-//		Matcher linkMatcher = LINK_PATTERN.matcher(link);
-//		
-//		if (!linkMatcher.matches()) {
-//			throw new Exception("Invalid link provided, must start with syncany:// and match link pattern.");
-//		}
-//		
-//		String notEncryptedFlag = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_FLAG);
-//		
-//		String plaintext = null;
-//		boolean isEncryptedLink = notEncryptedFlag == null;
-//		
-//		if (isEncryptedLink) {
-//			String masterKeySaltStr = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_MASTER_KEY_SALT);
-//			String ciphertext = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_ENCODED);
-//			
-//			byte[] masterKeySalt = Base64.decodeBase64(masterKeySaltStr);
-//			byte[] ciphertextBytes = Base64.decodeBase64(ciphertext);
-//			
-//			askPasswords();
-//
-//			notifyGenerateMasterKey();
-//			masterKey = CipherUtil.createMasterKey(encryptPassword, signaturePassword, masterKeySalt);
-//			
-//			ByteArrayInputStream encryptedStorageConfig = new ByteArrayInputStream(ciphertextBytes);
-//			
-//			plaintext = new String(CipherUtil.decrypt(encryptedStorageConfig, masterKey));					
-//		}
-//		else {
-//			String encodedPlaintext = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_ENCODED);
-//			plaintext = new String(Base64.decodeBase64(encodedPlaintext));
-//		}
-//		
-	
 	@Override
 	public void printResults(OperationResult operationResult) {
 		ConnectOperationResult concreteOperationResult = (ConnectOperationResult) operationResult;

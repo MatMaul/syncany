@@ -202,11 +202,6 @@ public class InitCommand extends AbstractInitCommand {
 			out.println();
 			out.println("ERROR: Cannot connect to repository. Unknown error code: " + concreteOperationResult.getResultCode());
 			out.println();
-//=======
-//		if (cipherSuites.size() > 0) {	
-//			transformersTO.add(getCipherTransformerTO(cipherSuites));
-//			transformersTO.add(getSignatureTransformerTO());
-//>>>>>>> origin/sign-transformer
 		}
 	}
 
