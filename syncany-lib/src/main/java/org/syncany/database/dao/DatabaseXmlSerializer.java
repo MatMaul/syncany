@@ -37,6 +37,7 @@ import org.syncany.chunk.Transformer;
 import org.syncany.database.DatabaseVersion;
 import org.syncany.database.MemoryDatabase;
 import org.syncany.database.VectorClock;
+import org.syncany.util.sign.SignException;
 
 /**
  * Serializes a {@link MemoryDatabase} or a list of {@link DatabaseVersion}s to an 
@@ -95,9 +96,9 @@ public class DatabaseXmlSerializer {
 		}
 	}
 
-	public void load(MemoryDatabase db, File databaseFile, VectorClock fromVersion, VectorClock toVersion, DatabaseReadType readType)
+	public boolean load(MemoryDatabase db, File databaseFile, VectorClock fromVersion, VectorClock toVersion, DatabaseReadType readType)
 			throws IOException {
-		
+
 		InputStream is;
 
 		if (transformer == null) {
@@ -114,8 +115,12 @@ public class DatabaseXmlSerializer {
 			SAXParser saxParser = factory.newSAXParser();
 
 			saxParser.parse(is, new DatabaseXmlParseHandler(db, fromVersion, toVersion, readType));
-		}
-		catch (Exception e) {
+
+			return true;
+		} catch (SignException e) {
+			logger.log(Level.INFO, "- Wrongly signed database " + databaseFile.getName() + " ignored.");
+			return false;
+		} catch (Exception e) {
 			throw new IOException(e);
 		}
 	}

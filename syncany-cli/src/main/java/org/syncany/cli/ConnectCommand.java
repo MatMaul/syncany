@@ -35,6 +35,7 @@ import org.syncany.plugins.transfer.TransferSettings;
 import static java.util.Arrays.asList;
 
 public class ConnectCommand extends AbstractInitCommand {
+	
 	public ConnectCommand() {
 		super();
 	}
@@ -83,13 +84,14 @@ public class ConnectCommand extends AbstractInitCommand {
 		OptionSpec<String> optionPlugin = parser.acceptsAll(asList("P", "plugin")).withRequiredArg();
 		OptionSpec<String> optionPluginOpts = parser.acceptsAll(asList("o", "plugin-option")).withRequiredArg();
 		OptionSpec<Void> optionAddDaemon = parser.acceptsAll(asList("n", "add-daemon"));
-		OptionSpec<String> optionPassword = parser.acceptsAll(asList("password")).withRequiredArg();
+		OptionSpec<String> optionEncryptPassword = parser.acceptsAll(asList("password", "encryptpassword")).withRequiredArg();
+		OptionSpec<String> optionSignPassword = parser.acceptsAll(asList("signpassword")).withRequiredArg();
 
 		OptionSet options = parser.parse(operationArgs);
 		List<?> nonOptionArgs = options.nonOptionArguments();
 
 		// Set interactivity mode  
-		isInteractive = !options.has(optionPlugin) && !options.has(optionPassword);
+		isInteractive = !options.has(optionPlugin) && !options.has(optionEncryptPassword);
 		
 		// Plugin
 		TransferSettings transferSettings = null;
@@ -117,24 +119,47 @@ public class ConnectCommand extends AbstractInitCommand {
 		operationOptions.setLocalDir(localDir);
 		operationOptions.setConfigTO(configTO);
 		operationOptions.setDaemon(options.has(optionAddDaemon));
-		operationOptions.setPassword(validateAndGetPassword(options, optionPassword));
+		// TODO check null
+		validateAndGetPasswords(options, null, optionEncryptPassword, optionSignPassword);
+		operationOptions.setEncryptPassword(encryptPassword);
+		operationOptions.setEncryptPassword(signPassword);
 
 		return operationOptions;
 	}
 
-	private String validateAndGetPassword(OptionSet options, OptionSpec<String> optionPassword) {		
-		if (!isInteractive) {
-			if (options.has(optionPassword)) {
-				return options.valueOf(optionPassword);
-			}			
-			else {
-				return null; // No encryption, no password.
-			}
-		}	
-		else {
-			return null; // Will be set in callback!
-		}
-	}
+//	private ConnectionTO initPluginWithLink(String link) throws Exception {
+//		Matcher linkMatcher = LINK_PATTERN.matcher(link);
+//		
+//		if (!linkMatcher.matches()) {
+//			throw new Exception("Invalid link provided, must start with syncany:// and match link pattern.");
+//		}
+//		
+//		String notEncryptedFlag = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_FLAG);
+//		
+//		String plaintext = null;
+//		boolean isEncryptedLink = notEncryptedFlag == null;
+//		
+//		if (isEncryptedLink) {
+//			String masterKeySaltStr = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_MASTER_KEY_SALT);
+//			String ciphertext = linkMatcher.group(LINK_PATTERN_GROUP_ENCRYPTED_ENCODED);
+//			
+//			byte[] masterKeySalt = Base64.decodeBase64(masterKeySaltStr);
+//			byte[] ciphertextBytes = Base64.decodeBase64(ciphertext);
+//			
+//			askPasswords();
+//
+//			notifyGenerateMasterKey();
+//			masterKey = CipherUtil.createMasterKey(encryptPassword, signaturePassword, masterKeySalt);
+//			
+//			ByteArrayInputStream encryptedStorageConfig = new ByteArrayInputStream(ciphertextBytes);
+//			
+//			plaintext = new String(CipherUtil.decrypt(encryptedStorageConfig, masterKey));					
+//		}
+//		else {
+//			String encodedPlaintext = linkMatcher.group(LINK_PATTERN_GROUP_NOT_ENCRYPTED_ENCODED);
+//			plaintext = new String(Base64.decodeBase64(encodedPlaintext));
+//		}
+//		
 	
 	@Override
 	public void printResults(OperationResult operationResult) {

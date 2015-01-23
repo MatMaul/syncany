@@ -40,12 +40,47 @@ repositories {
 	mavenCentral()
 }
 
+project(":ed25519-java") {
+	apply plugin: 'java'
+	apply plugin: 'eclipse'
+
+	tasks.eclipse.dependsOn(cleanEclipse)
+
+	sourceSets {
+	    main {
+		java {
+		    srcDir 'src'
+		}
+	    }
+	    test {
+		java {
+		    srcDir 'test'
+		}
+	    }
+	}
+
+	configurations {
+		tests
+	}
+
+	repositories {
+		mavenCentral()
+	}
+
+	dependencies {
+		testCompile		"org.hamcrest:hamcrest-all:1.3"       	
+		testCompile		"junit:junit:4.11"   	      
+	}
+}
+
 dependencies {
 	compile			project(":syncany-lib")
 	compile			project(":syncany-cli")
 	compile			project(":syncany-util")
+	compile			project(":ed25519-java")
       	
 	testCompile		project(path: ":syncany-lib", configuration: "tests")
 	testCompile		project(path: ":syncany-cli", configuration: "tests")
-	testCompile		project(path: ":syncany-util", configuration: "tests")  	      
+	testCompile		project(path: ":syncany-util", configuration: "tests") 
+	testCompile		project(path: ":ed25519-java", configuration: "tests")   	      
 }

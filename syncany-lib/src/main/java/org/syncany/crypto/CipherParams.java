@@ -88,7 +88,9 @@ public abstract class CipherParams {
 	 * @see #MASTER_KEY_DERIVATION_ROUNDS
 	 * @see #MASTER_KEY_SALT_SIZE
      */
-    public static final int MASTER_KEY_SIZE = 512; 	
+    public static final int MASTER_ENCRYPT_KEY_SIZE = 512; 	
+    
+    public static final int MASTER_SIGNATURE_KEY_SIZE = 256; 	
     
     /**
      * Size of the salt used to generate the master key. This value is used during
@@ -101,7 +103,7 @@ public abstract class CipherParams {
 	 * @see #MASTER_KEY_DERIVATION_ROUNDS
 	 * @see #MASTER_KEY_SIZE
      */    
-    public static final int MASTER_KEY_SALT_SIZE = 512;
+    public static final int MAST_KEY_SALT_SIZE = 512;
     
     /**
      * Hash function used in the HKDF key derivation algorithm for deriving

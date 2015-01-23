@@ -25,6 +25,7 @@ import java.util.Map;
 
 import org.syncany.chunk.Chunker;
 import org.syncany.chunk.CipherTransformer;
+import org.syncany.chunk.Ed25519SignTransformer;
 import org.syncany.chunk.FixedChunker;
 import org.syncany.chunk.GzipTransformer;
 import org.syncany.chunk.MultiChunker;
@@ -68,6 +69,8 @@ public class DefaultRepoTOFactory implements RepoTOFactory {
 		if (cipherSpecs.size() > 0) {
 			TransformerTO cipherTransformerTO = getCipherTransformerTO(cipherSpecs);
 			transformersTO.add(cipherTransformerTO);
+			TransformerTO signTransformerTO = getSignTransformerTO();
+			transformersTO.add(signTransformerTO);
 		}
 
 		return transformersTO;
@@ -116,6 +119,12 @@ public class DefaultRepoTOFactory implements RepoTOFactory {
 		gzipTransformerTO.setType(GzipTransformer.TYPE);
 
 		return gzipTransformerTO;
+	}
+
+	protected TransformerTO getSignTransformerTO() {
+		TransformerTO signTransformerTO = new TransformerTO();
+		signTransformerTO.setType(Ed25519SignTransformer.TYPE);
+		return signTransformerTO;
 	}
 
 	protected TransformerTO getCipherTransformerTO(List<CipherSpec> cipherSpec) {

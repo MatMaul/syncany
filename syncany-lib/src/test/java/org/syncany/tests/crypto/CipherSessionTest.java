@@ -28,6 +28,7 @@ import org.syncany.crypto.CipherSession;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
+import org.syncany.crypto.MasterKey;
 import org.syncany.crypto.SaltedSecretKey;
 import org.syncany.util.StringUtil;
 
@@ -38,7 +39,7 @@ public class CipherSessionTest {
 	
 	@Test
 	public void testCipherSessionWriteKeyReuseCountOfTwo() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();		
+		MasterKey masterKey = createDummyMasterKey();		
 		CipherSession cipherSession = new CipherSession(masterKey, 999, 2);
 		
 		CipherSpec cipherSpecAes128 = CipherSpecs.getCipherSpec(CipherSpecs.AES_128_GCM);
@@ -63,7 +64,7 @@ public class CipherSessionTest {
 	
 	@Test
 	public void testCipherSessionReadKeyCacheSizeOfThree() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();		
+		MasterKey masterKey = createDummyMasterKey();		
 		CipherSession cipherSession = new CipherSession(masterKey, 2, 999);
 		
 		CipherSpec cipherSpecAes128 = CipherSpecs.getCipherSpec(CipherSpecs.AES_128_GCM);
@@ -83,8 +84,8 @@ public class CipherSessionTest {
 		// TODO [medium] This does NOT TEST the actual read cache. How to test this. The cache is completely hidden/private?!
 	}	
 	
-	private SaltedSecretKey createDummyMasterKey() {
-		return new SaltedSecretKey(
+	private MasterKey createDummyMasterKey() {
+		return new MasterKey(
 			new SecretKeySpec(
 				StringUtil.fromHex("44fda24d53b29828b62c362529bd9df5c8a92c2736bcae3a28b3d7b44488e36e246106aa5334813028abb2048eeb5e177df1c702d93cf82aeb7b6d59a8534ff0"),
 				"AnyAlgorithm"

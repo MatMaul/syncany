@@ -27,8 +27,8 @@ import org.simpleframework.xml.convert.RegistryStrategy;
 import org.simpleframework.xml.core.Persister;
 import org.simpleframework.xml.strategy.Strategy;
 import org.syncany.config.ConfigException;
-import org.syncany.crypto.SaltedSecretKey;
-import org.syncany.crypto.SaltedSecretKeyConverter;
+import org.syncany.crypto.MasterKey;
+import org.syncany.crypto.MasterKeyConverter;
 import org.syncany.plugins.transfer.EncryptedTransferSettingsConverter;
 import org.syncany.plugins.transfer.TransferSettings;
 
@@ -53,8 +53,8 @@ public class ConfigTO {
 	private String displayName;
 
 	@Element(name = "masterKey", required = false)
-	@Convert(SaltedSecretKeyConverter.class)
-	private SaltedSecretKey masterKey;
+	@Convert(MasterKeyConverter.class)
+	private MasterKey masterKey;
 
 	@Element(name = "connection", required = false) // TODO [high] Workaround for 'connect' via GUI and syncany://link; field not needed when link is supplied
 	private TransferSettings transferSettings;
@@ -64,23 +64,30 @@ public class ConfigTO {
 
 	public static ConfigTO load(File file) throws ConfigException {
 		try {
-			Registry registry = new Registry();
-			Strategy strategy = new RegistryStrategy(registry);
-			registry.bind(SaltedSecretKey.class, new SaltedSecretKeyConverter());
-			registry.bind(String.class, new EncryptedTransferSettingsConverter());
-
-			return new Persister(strategy).read(ConfigTO.class, file);
+			return new ConfigTO().createPersister().read(ConfigTO.class, file);
 		}
 		catch (Exception ex) {
 			throw new ConfigException("Config file does not exist or is invalid: " + file, ex);
 		}
 	}
 
+	public Persister createPersister() throws Exception {
+		Registry registry = new Registry();
+		Strategy strategy = new RegistryStrategy(registry);
+		registry.bind(MasterKey.class, new MasterKeyConverter());
+		if (transferSettings == null) {
+			registry.bind(String.class, new EncryptedTransferSettingsConverter());
+		} else {
+			registry.bind(String.class, new EncryptedTransferSettingsConverter(transferSettings.getClass()));
+		}
+		return new Persister(strategy);
+	}
+
 	public void save(File file) throws ConfigException {
 		try {
 			Registry registry = new Registry();
 			Strategy strategy = new RegistryStrategy(registry);
-			registry.bind(SaltedSecretKey.class, new SaltedSecretKeyConverter());
+			registry.bind(MasterKey.class, new MasterKeyConverter());
 			registry.bind(String.class, new EncryptedTransferSettingsConverter(transferSettings.getClass()));
 
 			new Persister(strategy).write(this, file);
@@ -114,11 +121,11 @@ public class ConfigTO {
 		this.transferSettings = transferSettings;
 	}
 
-	public SaltedSecretKey getMasterKey() {
+	public MasterKey getMasterKey() {
 		return masterKey;
 	}
 
-	public void setMasterKey(SaltedSecretKey masterKey) {
+	public void setMasterKey(MasterKey masterKey) {
 		this.masterKey = masterKey;
 	}
 

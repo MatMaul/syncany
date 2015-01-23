@@ -20,6 +20,7 @@ package org.syncany.config.to;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,7 +36,7 @@ import org.simpleframework.xml.core.Persister;
 import org.syncany.config.ConfigException;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.util.StringUtil;
 
 /**
@@ -65,6 +66,10 @@ public class RepoTO {
 	@ElementList(name = "transformers", required = false, entry = "transformer")
 	private ArrayList<TransformerTO> transformers;
 
+	@Element(name="verifykey", required=false)
+	private String verifyKeyEncoded;
+	private PublicKey verifyKey;
+
 	public byte[] getRepoId() {
 		return repoId;
 	}
@@ -82,7 +87,7 @@ public class RepoTO {
 		}
 	}
 
-	public void save(File file, List<CipherSpec> cipherSpecs, SaltedSecretKey masterKey) throws ConfigException {
+	public void save(File file, List<CipherSpec> cipherSpecs, MasterKey masterKey) throws ConfigException {
 		try {
 
 			ByteArrayOutputStream plaintextRepoOutputStream = new ByteArrayOutputStream();
@@ -100,16 +105,24 @@ public class RepoTO {
 	@Persist
 	public void prepare() {
 		repoIdEncoded = (repoId != null) ? StringUtil.toHex(repoId) : null;
+		verifyKeyEncoded = (verifyKey != null) ? StringUtil.toHex(verifyKey.getEncoded()) : null;
 	}
 
 	@Complete
 	public void release() {
 		repoIdEncoded = null;
+		verifyKeyEncoded = null;
 	}
 
 	@Commit
 	public void commit() {
 		repoId = (repoIdEncoded != null) ? StringUtil.fromHex(repoIdEncoded) : null;
+		try {
+			verifyKey = CipherUtil.createVerifyKey(StringUtil.fromHex(verifyKeyEncoded));
+		}
+		catch (Exception e) {
+			verifyKey = null;
+		}
 	}
 
 	public ChunkerTO getChunkerTO() {
@@ -119,7 +132,15 @@ public class RepoTO {
 	public void setChunkerTO(ChunkerTO chunker) {
 		this.chunker = chunker;
 	}
-
+	
+	public void setVerifyKey(PublicKey verifyKey) {
+		this.verifyKey = verifyKey;
+	}
+	
+	public PublicKey getVerifyKey() {
+		return verifyKey;
+	}
+	
 	public MultiChunkerTO getMultiChunker() {
 		return multiChunker;
 	}

@@ -15,30 +15,44 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.operations.init;
+package org.syncany.util;
 
+import java.io.IOException;
+import java.io.InputStream;
 
-public class ConnectOperationOptions extends AbstractInitOperationOptions {
-	public enum ConnectOptionsStrategy {
-		CONNECTION_LINK, CONNECTION_TO
-	}		
+/**
+ * @author matmaul
+ *
+ */
+public abstract class ThrowingInputStream extends InputStream {
 	
-	private ConnectOptionsStrategy strategy = ConnectOptionsStrategy.CONNECTION_TO;
-	private String connectLink;
-	
-	public ConnectOptionsStrategy getStrategy() {
-		return strategy;
-	}
+	/**
+	 * copy-paste of the original implementation, but throws an IOException if an underlying read does
+	 */
+	@Override
+	public int read(byte b[], int off, int len) throws IOException {
+		if (b == null) {
+			throw new NullPointerException();
+		} else if (off < 0 || len < 0 || len > b.length - off) {
+			throw new IndexOutOfBoundsException();
+		} else if (len == 0) {
+			return 0;
+		}
 
-	public void setStrategy(ConnectOptionsStrategy strategy) {
-		this.strategy = strategy;
-	}
+		int c = read();
+		if (c == -1) {
+			return -1;
+		}
+		b[off] = (byte)c;
 
-	public String getConnectLink() {
-		return connectLink;
-	}
-
-	public void setConnectLink(String connectionLink) {
-		this.connectLink = connectionLink;
+		int i = 1;
+		for (; i < len ; i++) {
+			c = read();
+			if (c == -1) {
+				break;
+			}
+			b[off + i] = (byte)c;
+		}
+		return i;
 	}
 }

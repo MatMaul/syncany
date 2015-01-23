@@ -25,6 +25,8 @@ import java.util.logging.Logger;
 
 import org.syncany.config.Config;
 import org.syncany.config.LocalEventBus;
+import org.syncany.crypto.CipherUtil;
+import org.syncany.crypto.MasterKey;
 import org.syncany.operations.Operation;
 import org.syncany.operations.daemon.messages.ShowMessageExternalEvent;
 import org.syncany.plugins.UserInteractionListener;
@@ -42,12 +44,14 @@ public abstract class AbstractInitOperation extends Operation {
 
 	protected UserInteractionListener listener;
 	protected LocalEventBus eventBus;
+	protected AbstractInitOperationOptions options;
 
-	public AbstractInitOperation(Config config, UserInteractionListener listener) {
+	public AbstractInitOperation(Config config, AbstractInitOperationOptions options, UserInteractionListener listener) {
 		super(config);
 		
 		this.listener = listener;
 		this.eventBus = LocalEventBus.getInstance();
+		this.options = options;
 	}
 
 	protected File createAppDirs(File localDir) throws IOException {
@@ -105,4 +109,41 @@ public abstract class AbstractInitOperation extends Operation {
 	protected void fireNotifyCreateMaster() {
 		eventBus.post(new ShowMessageExternalEvent("Creating master key from password (this might take a while) ..."));
 	}
+	
+	protected MasterKey getOrAskPasswords(byte[] keySalt) throws Exception {
+		if (options == null || options.getEncryptPassword() == null) {
+			if (listener == null) {
+				throw new Exception("Repository file is encrypted, but password cannot be queried (no listener).");
+			}
+			// TODO
+//			private void askPasswords() {
+//				encryptPassword = askPassword("Encrypt Password: ", false, false);
+//				Boolean writeAccess = null;
+//				while (writeAccess == null) {
+//					char[] res = console.readPassword("Do you have write access on this repository ? (y/n)");
+//					String resStr = new String(res);
+//					if (resStr.toLowerCase().startsWith("y")) {
+//						writeAccess = true;
+//					}
+//					if (resStr.toLowerCase().startsWith("n")) {
+//						writeAccess = false;
+//					}
+//				}
+//				if (writeAccess) {
+//					signaturePassword = askPassword("Signature Password (can be empty): ", false, false);
+//				
+			String encryptPass = listener.onUserPassword("The password is used to encrypt data on the remote storage, choose wisely!", "Encrypt Password: ", false);
+			String signPass = listener.onUserPassword("A different password can be used for write access, this can be left empty otherwise", "Sign Password: ", true);
+			return createMasterKeyFromPasswords(encryptPass, signPass, keySalt);
+		} else {
+			return createMasterKeyFromPasswords(options.getEncryptPassword(), options.getSignPassword(), keySalt);
+		}	
+	}
+
+	protected MasterKey createMasterKeyFromPasswords(String encryptPassword, String signPassword, byte[] salt) throws Exception {
+		fireNotifyCreateMaster();
+
+		return CipherUtil.createMasterKey(encryptPassword, signPassword, salt);
+	}
+	
 }

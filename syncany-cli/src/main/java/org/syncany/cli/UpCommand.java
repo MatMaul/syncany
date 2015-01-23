@@ -99,6 +99,9 @@ public class UpCommand extends Command {
 		if (concreteOperationResult.getResultCode() == UpResultCode.NOK_UNKNOWN_DATABASES) {
 			out.println("Sync up skipped, because there are remote changes.");
 		}
+		else if (concreteOperationResult.getResultCode() == UpResultCode.NOK_NO_SIGN_KEY) {
+			out.println("No write key available, up is not possible.");
+		}
 		else if (concreteOperationResult.getResultCode() == UpResultCode.OK_CHANGES_UPLOADED) {
 			ChangeSet changeSet = concreteOperationResult.getChangeSet();
 

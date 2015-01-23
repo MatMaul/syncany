@@ -77,6 +77,9 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 
 	protected InitConsole console;
 	protected boolean isInteractive;
+	
+	protected String encryptPassword;
+	protected String signPassword;
 
 	public AbstractInitCommand() {
 		console = InitConsole.getInstance();
@@ -153,7 +156,7 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 		try {
 			// Show OAuth output
 			printOAuthInformation(settings);
-			
+
 			// Ask for plugin settings
 			List<TransferPluginOption> pluginOptions = TransferPluginOptions.getOrderedOptions(settings.getClass());
 
@@ -180,7 +183,7 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 	}
 
 	private void printOAuthInformation(TransferSettings settings) throws StorageException, NoSuchMethodException, SecurityException,
-			InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
+	InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
 		Class<? extends OAuthGenerator> oAuthGeneratorClass = TransferPluginUtil.getOAuthGeneratorClass(settings.getClass());
 
 		if (oAuthGeneratorClass != null) {
@@ -188,12 +191,12 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 			OAuthGenerator oAuthGenerator = optionCallbackClassConstructor.newInstance(settings);			
 
 			URI oAuthURL = oAuthGenerator.generateAuthUrl();
-			
+
 			out.println();
 			out.println("This plugin needs you to authenticate your account so that Syncany can access it.");
 			out.printf("Please navigate to the URL below and enter the token:\n\n  %s\n\n", oAuthURL.toString());			
 			out.print("- Token (paste from URL): ");
-			
+
 			String token = console.readLine();
 			oAuthGenerator.checkToken(token);
 		}
@@ -221,8 +224,8 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 
 	private void askNormalPluginSettings(TransferSettings settings, TransferPluginOption option, Map<String, String> knownPluginSettings,
 			String nestPrefix)
-			throws StorageException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
-			NoSuchMethodException, SecurityException {
+					throws StorageException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException,
+					NoSuchMethodException, SecurityException {
 
 		TransferPluginOptionCallback optionCallback = createOptionCallback(settings, option.getCallback());
 		TransferPluginOptionConverter optionConverter = createOptionConverter(settings, option.getConverter());
@@ -260,8 +263,8 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 	 */
 	private void askGenericChildPluginSettings(TransferSettings settings, TransferPluginOption option, Map<String, String> knownPluginSettings,
 			String nestPrefix)
-			throws StorageException, IllegalAccessException, InstantiationException, IllegalArgumentException, InvocationTargetException,
-			NoSuchMethodException, SecurityException {
+					throws StorageException, IllegalAccessException, InstantiationException, IllegalArgumentException, InvocationTargetException,
+					NoSuchMethodException, SecurityException {
 
 		TransferPluginOptionCallback optionCallback = createOptionCallback(settings, option.getCallback());
 
@@ -440,11 +443,11 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 
 		if (knownOptionValue == null || "".equals(knownOptionValue)) {
 			String defaultValueDescription = settings.getField(option.getField().getName());
-			
+
 			if (defaultValueDescription == null) {
 				defaultValueDescription = "none";
 			}
-			
+
 			out.printf("- %s (optional, default is %s): ", option.getDescription(), defaultValueDescription);
 			value = console.readLine();
 		}
@@ -524,31 +527,31 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 	private TransferPluginOptionConverter createOptionConverter(TransferSettings settings,
 			Class<? extends TransferPluginOptionConverter> optionConverterClass) throws InstantiationException, IllegalAccessException,
 			IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
-		
+
 		TransferPluginOptionConverter optionConverter = null;
-		
+
 		if (optionConverterClass != null) {
 			Constructor<? extends TransferPluginOptionConverter> optionConverterClassConstructor = optionConverterClass.getDeclaredConstructor(settings.getClass());
 			optionConverter = optionConverterClassConstructor.newInstance(settings);			
 		}
-		
+
 		return optionConverter;
 	}
 
 	private TransferPluginOptionCallback createOptionCallback(TransferSettings settings,
 			Class<? extends TransferPluginOptionCallback> optionCallbackClass) throws InstantiationException, IllegalAccessException,
 			IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
-		
+
 		TransferPluginOptionCallback optionCallback = null;
-		
+
 		if (optionCallbackClass != null) {
 			Constructor<? extends TransferPluginOptionCallback> optionCallbackClassConstructor = optionCallbackClass.getDeclaredConstructor(settings.getClass());
 			optionCallback = optionCallbackClassConstructor.newInstance(settings);			
 		}
-		
+
 		return optionCallback;
 	}
-	
+
 	protected String getRandomMachineName() {
 		return CipherUtil.createRandomAlphabeticString(20);
 	}
@@ -646,11 +649,11 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 	}
 
 	@Override
-	public String onUserPassword(String header, String message) {
+	public String onUserPassword(String header, String message, boolean allowEmpty) {
 		if (!isInteractive) {
 			throw new RuntimeException("Repository is encrypted, but no password was given in non-interactive mode.");			
 		}
-		
+
 		out.println();
 
 		if (header != null) {
@@ -662,52 +665,82 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 			message += ": ";
 		}
 
-		char[] passwordChars = console.readPassword(message);
-		return String.copyValueOf(passwordChars);
+		return askPassword(message, true, true, allowEmpty);
 	}
 
-	@Override
-	public String onUserNewPassword() {
-		out.println();
-		out.println("The password is used to encrypt data on the remote storage.");
-		out.println("Choose wisely!");
-		out.println();
-
+	protected String askPassword(String label, boolean confirm, boolean checkLength, boolean allowEmpty) {
 		String password = null;
 
 		while (password == null) {
-			char[] passwordChars = console.readPassword("Password (min. " + PASSWORD_MIN_LENGTH + " chars): ");
-
-			if (passwordChars.length < PASSWORD_MIN_LENGTH) {
-				out.println("ERROR: This password is not allowed (too short, min. " + PASSWORD_MIN_LENGTH + " chars)");
-				out.println();
-
-				continue;
-			}
-
-			char[] confirmPasswordChars = console.readPassword("Confirm: ");
-
-			if (!Arrays.equals(passwordChars, confirmPasswordChars)) {
-				out.println("ERROR: Passwords do not match.");
-				out.println();
-
-				continue;
-			}
-
-			if (passwordChars.length < PASSWORD_WARN_LENGTH) {
-				out.println();
-				out.println("WARNING: The password is a bit short. Less than " + PASSWORD_WARN_LENGTH + " chars are not future-proof!");
-				String yesno = console.readLine("Are you sure you want to use it (y/n)? ");
-
-				if (!yesno.toLowerCase().startsWith("y") && !"".equals(yesno)) {
-					out.println();
+			char[] passwordChars = console.readPassword(label);
+			if (passwordChars == null || passwordChars.length == 0) {
+				if (allowEmpty) {
+					return null;
+				} else {
 					continue;
 				}
 			}
 
-			password = new String(passwordChars);
-		}
+			if (confirm) {
+				char[] confirmPasswordChars = console.readPassword("Confirm: ");
 
+				if (!Arrays.equals(passwordChars, confirmPasswordChars)) {
+					out.println("ERROR: Passwords do not match.");
+					out.println();
+
+					continue;
+				} 
+			}
+
+			if (checkLength) {
+				if (passwordChars.length < PASSWORD_MIN_LENGTH) {
+					out.println("ERROR: This password is not allowed (too short, min. "+PASSWORD_MIN_LENGTH+" chars)");
+					out.println();
+
+					continue;
+				}
+
+				if (passwordChars.length < PASSWORD_WARN_LENGTH) {
+					out.println();
+					out.println("WARNING: The password is a bit short. Less than "+PASSWORD_WARN_LENGTH+" chars are not future-proof!");
+					String yesno = console.readLine("Are you sure you want to use it (y/n)? ");
+
+					if (!yesno.toLowerCase().startsWith("y")) {
+						out.println();
+						continue;
+					}
+				}
+
+				password = new String(passwordChars);			
+			}	
+		}
 		return password;
+	}
+	
+	protected void validateAndGetPasswords(OptionSet options, OptionSpec<Void> optionNoEncryption, OptionSpec<String> optionEncryptPassword, OptionSpec<String> optionSignPassword) {
+		if (!isInteractive) {
+			if ((options.has(optionEncryptPassword) || options.has(optionSignPassword)) && options.has(optionNoEncryption)) {
+				throw new IllegalArgumentException("Cannot provide a password and --no-encryption. Conflicting options.");
+			}
+			else if (!options.has(optionEncryptPassword) && !options.has(optionNoEncryption)) {
+				throw new IllegalArgumentException("Non-interactive must either provide --no-encryption or --password.");
+			}
+			else if (options.has(optionEncryptPassword) && !options.has(optionNoEncryption)) {
+				encryptPassword = options.valueOf(optionEncryptPassword);
+
+				if (encryptPassword.length() < PASSWORD_MIN_LENGTH) {
+					throw new IllegalArgumentException("This password is not allowed (too short, min. " + PASSWORD_MIN_LENGTH + " chars)");
+				}
+
+				if (options.has(optionSignPassword)) {
+					signPassword = options.valueOf(optionSignPassword);
+
+					if (signPassword.length() < PASSWORD_MIN_LENGTH) {
+						throw new IllegalArgumentException("This password is not allowed (too short, min. " + PASSWORD_MIN_LENGTH + " chars)");
+					}
+				}
+
+			}
+		}
 	}
 }

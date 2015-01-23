@@ -61,19 +61,14 @@ public class EventUserInteractionListener implements UserInteractionListener {
 	}
 
 	@Override
-	public String onUserPassword(String header, String message) {
+	public String onUserPassword(String header, String message, boolean allowEmpty) {
 		logger.log(Level.INFO, "User password needed. Sending message.");
-		eventBus.post(new GetPasswordUserInteractionExternalEvent());
+		eventBus.post(new GetPasswordUserInteractionExternalEvent(header, message, allowEmpty));
 		
 		GetPasswordUserInteractionExternalEventResponse userConfirmation = (GetPasswordUserInteractionExternalEventResponse) waitForUserResponse();
 		return userConfirmation.getPassword();
 	}
 
-	@Override
-	public String onUserNewPassword() {
-		throw new RuntimeException("onUserNewPassword() not implemented for WebSocket init/connect.");
-	}		
-	
 	@Subscribe
 	public void onConfirmUserInteractionExternalManagementRequest(ConfirmUserInteractionExternalEventResponse response) {
 		userResponse = response;		

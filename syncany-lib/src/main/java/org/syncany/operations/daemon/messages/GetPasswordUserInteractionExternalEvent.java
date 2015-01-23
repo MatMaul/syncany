@@ -17,10 +17,41 @@
  */
 package org.syncany.operations.daemon.messages;
 
+import org.simpleframework.xml.Element;
 import org.syncany.operations.daemon.messages.api.ExternalEvent;
 
 public class GetPasswordUserInteractionExternalEvent extends ExternalEvent {
+	@Element(name = "header", required = true)
+	private String header;
+	
+	@Element(name = "message", required = true)
+	private String message;
+	
+	private boolean allowEmpty = false;
+	
 	public GetPasswordUserInteractionExternalEvent() {
 		// Nothing
+	}
+	
+	public GetPasswordUserInteractionExternalEvent(String header, String message) {
+		this.header = header;
+		this.message = message;
+	}
+	
+	public GetPasswordUserInteractionExternalEvent(String header, String message, boolean allowEmpty) {
+		this(header, message);
+		this.allowEmpty = allowEmpty;
+	}
+	
+	public String getHeader() {
+		return header;
+	}
+
+	public String getMessage() {
+		return message;
+	}
+	
+	public boolean allowEmpty() {
+		return allowEmpty;
 	}
 }

@@ -33,7 +33,11 @@ import org.syncany.plugins.transfer.TransferSettings;
 
 public class TestClient extends Client {
 	public TestClient(String machineName, TransferSettings connection) throws Exception {
-		Config testConfig = TestConfigUtil.createTestLocalConfig(machineName, connection);
+		this(machineName, connection, false);
+	}	
+	
+	public TestClient(String machineName, TransferSettings connection, boolean useWrongSignPassword) throws Exception {
+		Config testConfig = TestConfigUtil.createTestLocalConfig(machineName, connection, useWrongSignPassword);
 		testConfig.setMachineName(machineName);
 		testConfig.setDisplayName(machineName);
 		

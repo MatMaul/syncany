@@ -34,7 +34,7 @@ import org.syncany.config.ConfigException;
 import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.config.to.RepoTO.TransformerTO;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.tests.util.TestAssertUtil;
 import org.syncany.tests.util.TestConfigUtil;
 import org.syncany.util.StringUtil;
@@ -302,8 +302,8 @@ public class ConfigTest {
 		}	
 	}	
 	
-	private SaltedSecretKey createDummyMasterKey() {
-		return new SaltedSecretKey(
+	private MasterKey createDummyMasterKey() {
+		return new MasterKey(
 			new SecretKeySpec(
 				StringUtil.fromHex("44fda24d53b29828b62c362529bd9df5c8a92c2736bcae3a28b3d7b44488e36e246106aa5334813028abb2048eeb5e177df1c702d93cf82aeb7b6d59a8534ff0"),
 				"AnyAlgorithm"

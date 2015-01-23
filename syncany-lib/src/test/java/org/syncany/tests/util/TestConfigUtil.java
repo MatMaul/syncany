@@ -18,6 +18,9 @@
 package org.syncany.tests.util;
 
 import java.io.File;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -25,13 +28,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.simpleframework.xml.core.Persister;
 import org.syncany.chunk.Chunker;
 import org.syncany.chunk.CipherTransformer;
+import org.syncany.chunk.Ed25519SignTransformer;
 import org.syncany.chunk.GzipTransformer;
 import org.syncany.chunk.ZipMultiChunker;
 import org.syncany.config.Config;
-import org.syncany.config.UserConfig;
 import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.config.to.RepoTO.ChunkerTO;
@@ -39,7 +41,7 @@ import org.syncany.config.to.RepoTO.MultiChunkerTO;
 import org.syncany.config.to.RepoTO.TransformerTO;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.operations.init.InitOperationOptions;
 import org.syncany.plugins.Plugins;
 import org.syncany.plugins.local.LocalTransferSettings;
@@ -47,16 +49,17 @@ import org.syncany.plugins.transfer.TransferPlugin;
 import org.syncany.plugins.transfer.TransferSettings;
 import org.syncany.plugins.unreliable_local.UnreliableLocalTransferPlugin;
 import org.syncany.plugins.unreliable_local.UnreliableLocalTransferSettings;
+
 import com.google.common.collect.Lists;
 
 public class TestConfigUtil {
 	private static final String RUNDATE = new SimpleDateFormat("yyMMddHHmmssSSS").format(new Date());
 	private static boolean cryptoEnabled = false;
-	private static SaltedSecretKey masterKey = null;
+	private static MasterKey cachedMasterKey = null;
+	private static MasterKey wrongSignMasterKey = null;
 
 	static {
 		try {
-			UserConfig.init(); // Load userconfig (include system properties, e.g. org.syncany.test.tmpdir)
 			TestConfigUtil.cryptoEnabled = Boolean.parseBoolean(System.getProperty("crypto.enable"));
 		}
 		catch (Exception e) {
@@ -69,18 +72,18 @@ public class TestConfigUtil {
 
 		File tempRepoDir = TestFileUtil.createTempDirectoryInSystemTemp(createUniqueName("repo", new Random().nextFloat()));
 		pluginSettings.put("path", tempRepoDir.getAbsolutePath());
-
+		
 		return pluginSettings;
 	}
-
+		
 	public static Config createTestLocalConfig() throws Exception {
 		return createTestLocalConfig("syncanyclient");
 	}
-
+	
 	public static Config createTestLocalConfig(String machineName) throws Exception {
-		return createTestLocalConfig(machineName, createTestLocalConnection());
+		return createTestLocalConfig(machineName, createTestLocalConnection(), false);
 	}
-
+	
 	public static MultiChunkerTO createZipMultiChunkerTO() {
 		Map<String, String> settings = new HashMap<String, String>();
 		settings.put(ZipMultiChunker.PROPERTY_SIZE, "4096");
@@ -135,23 +138,28 @@ public class TestConfigUtil {
 			cipherTransformerTO.setType(CipherTransformer.TYPE);
 			cipherTransformerTO.setSettings(cipherTransformerSettings);
 
-			return Lists.newArrayList(gzipTransformerTO, cipherTransformerTO);
+			TransformerTO signTransformerTO = new TransformerTO();
+			signTransformerTO.setType(Ed25519SignTransformer.TYPE);
+
+			return Lists.newArrayList(gzipTransformerTO, cipherTransformerTO, signTransformerTO);
 		}
 	}
-
-	private static SaltedSecretKey getMasterKey() throws Exception {
-		if (!cryptoEnabled) {
-			return null;
+	
+	public static MasterKey getMasterKey() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		if (cachedMasterKey == null) {
+			cachedMasterKey = CipherUtil.createMasterKey("some password", "some other password");
 		}
-		else {
-			if (masterKey == null) {
-				masterKey = CipherUtil.createMasterKey("some password");
-			}
-
-			return masterKey;
-		}
+		return cachedMasterKey;
 	}
-
+	
+	public static MasterKey getWrongSignMasterKey() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		if (wrongSignMasterKey == null) {
+			wrongSignMasterKey = CipherUtil.createMasterKey("some password", "some wrong password", getMasterKey().getSalt());
+		}
+		return wrongSignMasterKey;
+	}
+	
+	
 	public static Config createDummyConfig() throws Exception {
 		ConfigTO configTO = new ConfigTO();
 		configTO.setMachineName("dummymachine");
@@ -163,8 +171,12 @@ public class TestConfigUtil {
 
 		return new Config(new File("/dummy"), configTO, repoTO);
 	}
-
+	
 	public static Config createTestLocalConfig(String machineName, TransferSettings connection) throws Exception {
+		return createTestLocalConfig(machineName, connection, false);
+	}
+
+	public static Config createTestLocalConfig(String machineName, TransferSettings connection, boolean useWrongSignPassword) throws Exception {
 		File tempLocalDir = TestFileUtil.createTempDirectoryInSystemTemp(createUniqueName("client-" + machineName, connection));
 		tempLocalDir.mkdirs();
 
@@ -173,10 +185,17 @@ public class TestConfigUtil {
 		// Create config TO
 		ConfigTO configTO = new ConfigTO();
 		configTO.setMachineName(machineName + CipherUtil.createRandomAlphabeticString(20));
-
-		// Get Masterkey
-		SaltedSecretKey masterKey = getMasterKey();
-		configTO.setMasterKey(masterKey);
+		
+		if (cryptoEnabled) {
+			MasterKey masterKey = null;
+			if (useWrongSignPassword) {
+				masterKey = getWrongSignMasterKey();
+				repoTO.setVerifyKey(CipherUtil.createVerifyKey(getMasterKey().getSignKey()));
+			} else {
+				masterKey = getMasterKey();
+			}
+			configTO.setMasterKey(masterKey);
+		}
 
 		LocalTransferSettings localConnection = (LocalTransferSettings) connection;
 		// Create connection TO
@@ -196,8 +215,8 @@ public class TestConfigUtil {
 		config.getStateDir().mkdirs();
 
 		// Write to config folder (required for some tests)
-		new Persister().write(configTO, new File(config.getAppDir() + "/" + Config.FILE_CONFIG));
-		new Persister().write(repoTO, new File(config.getAppDir() + "/" + Config.FILE_REPO));
+		configTO.createPersister().write(configTO, new File(config.getAppDir() + "/" + Config.FILE_CONFIG));
+		configTO.createPersister().write(repoTO, new File(config.getAppDir() + "/" + Config.FILE_REPO));
 
 		return config;
 	}
@@ -215,7 +234,7 @@ public class TestConfigUtil {
 		configTO.setMachineName(machineName + Math.abs(new Random().nextInt()));
 
 		// Get Masterkey
-		SaltedSecretKey masterKey = getMasterKey();
+		MasterKey masterKey = getMasterKey();
 		configTO.setMasterKey(masterKey);
 
 		// Generic connection settings wont work anymore, because they are plugin dependent now.
@@ -232,10 +251,12 @@ public class TestConfigUtil {
 
 		operationOptions.setEncryptionEnabled(cryptoEnabled);
 		operationOptions.setCipherSpecs(CipherSpecs.getDefaultCipherSpecs());
-		operationOptions.setPassword(cryptoEnabled ? "some password" : null);
+		operationOptions.setEncryptPassword(cryptoEnabled ? "some password" : null);
+		operationOptions.setSignPassword(cryptoEnabled ? "some other password" : null);
 
 		return operationOptions;
 	}
+
 
 	public static InitOperationOptions createTestUnreliableInitOperationOptions(String machineName, List<String> failingOperationPatterns)
 			throws Exception {

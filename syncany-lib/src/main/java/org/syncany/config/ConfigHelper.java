@@ -27,7 +27,7 @@ import org.simpleframework.xml.core.Persister;
 import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.plugins.Plugins;
 import org.syncany.plugins.transfer.TransferPlugin;
 
@@ -185,7 +185,7 @@ public class ConfigHelper {
     private static RepoTO loadEncryptedRepoTO(File repoFile, ConfigTO configTO) throws Exception {
     	logger.log(Level.INFO, "Loading encrypted repo file from {0} ...", repoFile);
 
-		SaltedSecretKey masterKey = configTO.getMasterKey();
+		MasterKey masterKey = configTO.getMasterKey();
 
 		if (masterKey == null) {
 			throw new ConfigException("Repo file is encrypted, but master key not set in config file.");

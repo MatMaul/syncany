@@ -323,6 +323,13 @@ public class UpOperation extends AbstractTransferOperation {
 	 * @returns boolean true if Up can and should be done, false otherwise. 
 	 */
 	private boolean checkPreconditions() throws Exception {
+		if (config.getMasterKey() != null && config.getMasterKey().getSignKey() == null) {
+			logger.log(Level.INFO, "No sign key available, up is not possible.");
+			result.setResultCode(UpResultCode.NOK_NO_SIGN_KEY);
+
+			return false;
+		}
+
 		// Find local changes
 		StatusOperation statusOperation = new StatusOperation(config, options.getStatusOptions());
 		StatusOperationResult statusOperationResult = statusOperation.execute();

@@ -25,6 +25,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.junit.Test;
+import org.syncany.chunk.Ed25519SignTransformer;
 import org.syncany.config.Config;
 import org.syncany.config.ConfigHelper;
 import org.syncany.config.to.ConfigTO;
@@ -147,9 +148,10 @@ public class ConfigHelperTest {
 		
 		if (TestConfigUtil.getCrypto()) {
 			assertNotNull(repoConfigTO.getTransformers());
-			assertEquals(2, repoConfigTO.getTransformers().size());
+			assertEquals(3, repoConfigTO.getTransformers().size());
 			assertEquals("gzip", repoConfigTO.getTransformers().get(0).getType());
 			assertEquals("cipher", repoConfigTO.getTransformers().get(1).getType());
+			assertEquals(Ed25519SignTransformer.TYPE, repoConfigTO.getTransformers().get(2).getType());
 		}
 		else {
 			assertNull(repoConfigTO.getTransformers());

@@ -32,7 +32,7 @@ import org.syncany.config.to.MasterTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.crypto.CipherException;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.operations.daemon.messages.ShowMessageExternalEvent;
 import org.syncany.operations.init.ConnectOperationOptions.ConnectOptionsStrategy;
 import org.syncany.operations.init.ConnectOperationResult.ConnectResultCode;
@@ -76,7 +76,7 @@ public class ConnectOperation extends AbstractInitOperation {
 	private TransferManager transferManager;
 
 	public ConnectOperation(ConnectOperationOptions options, UserInteractionListener listener) {
-		super(null, listener);
+		super(null, options, listener);
 
 		this.options = options;
 		this.result = new ConnectOperationResult();
@@ -127,7 +127,7 @@ public class ConnectOperation extends AbstractInitOperation {
 				boolean retryPassword = true;
 
 				while (retryPassword) {
-					SaltedSecretKey possibleMasterKey = askPasswordAndCreateMasterKey();
+					MasterKey possibleMasterKey = askPasswordAndCreateMasterKey();
 					logger.log(Level.INFO, "- Master key created. Now verifying by decrypting repo file...");
 
 					if (decryptAndVerifyRepoFile(tmpRepoFile, possibleMasterKey)) {
@@ -198,7 +198,7 @@ public class ConnectOperation extends AbstractInitOperation {
 		return result;
 	}
 
-	private boolean decryptAndVerifyRepoFile(File tmpRepoFile, SaltedSecretKey masterKey) throws StorageException {
+	private boolean decryptAndVerifyRepoFile(File tmpRepoFile, MasterKey masterKey) throws StorageException {
 		try {
 			String repoFileStr = decryptRepoFile(tmpRepoFile, masterKey);
 			verifyRepoFile(repoFileStr);
@@ -210,16 +210,13 @@ public class ConnectOperation extends AbstractInitOperation {
 		}
 	}
 
-	private SaltedSecretKey askPasswordAndCreateMasterKey() throws CipherException, StorageException {
+	private MasterKey askPasswordAndCreateMasterKey() throws Exception {
 		File tmpMasterFile = downloadFile(transferManager, new MasterRemoteFile());
 		MasterTO masterTO = readMasterFile(tmpMasterFile);
 
 		tmpMasterFile.delete();
 
-		String masterKeyPassword = getOrAskPassword();
-		byte[] masterKeySalt = masterTO.getSalt();
-
-		return createMasterKeyFromPassword(masterKeyPassword, masterKeySalt); // This takes looong!
+		return getOrAskPasswords(masterTO.getSalt());
 	}
 
 	private ConfigTO createConfigTO() throws StorageException, CipherException {
@@ -229,24 +226,24 @@ public class ConnectOperation extends AbstractInitOperation {
 			return configTO;
 		}
 		else if (options.getStrategy() == ConnectOptionsStrategy.CONNECTION_LINK) {
-			return createConfigTOFromLink(configTO, options.getConnectLink(), options.getPassword());
+			return createConfigTOFromLink(configTO, options.getConnectLink(), options.getEncryptPassword(), options.getSignPassword());
 		}
 		else {
 			throw new RuntimeException("Unhandled connect strategy: " + options.getStrategy());
 		}
 	}
 
-	private ConfigTO createConfigTOFromLink(ConfigTO configTO, String link, String masterPassword) throws StorageException, CipherException {
+	private ConfigTO createConfigTOFromLink(ConfigTO configTO, String link, String encryptPassword, String signPassword) throws StorageException, CipherException {
 		logger.log(Level.INFO, "Creating config TO from link: " + link + " ...");
 		ApplicationLink applicationLink = new ApplicationLink(link);
 
 		try {
 			if (applicationLink.isEncrypted()) {
 				// Non-interactive mode
-				if (masterPassword != null) {
+				if (encryptPassword != null) {
 					logger.log(Level.INFO, " - Link is encrypted. Password available.");
 
-					SaltedSecretKey masterKey = createMasterKeyFromPassword(masterPassword, applicationLink.getMasterKeySalt());
+					MasterKey masterKey = createMasterKeyFromPasswords(encryptPassword, signPassword, applicationLink.getMasterKeySalt());
 					TransferSettings transferSettings = applicationLink.createTransferSettings(masterKey);
 
 					configTO.setMasterKey(masterKey);
@@ -259,10 +256,7 @@ public class ConnectOperation extends AbstractInitOperation {
 
 					while (retryPassword) {
 						// Ask password
-						masterPassword = getOrAskPassword();
-
-						// Generate master key
-						SaltedSecretKey masterKey = createMasterKeyFromPassword(masterPassword, applicationLink.getMasterKeySalt());
+						MasterKey masterKey = getOrAskPasswords(applicationLink.getMasterKeySalt());
 
 						// Decrypt config
 						try {
@@ -316,19 +310,6 @@ public class ConnectOperation extends AbstractInitOperation {
 		}
 	}
 
-	private String getOrAskPassword() {
-		if (options.getPassword() == null) {
-			if (listener == null) {
-				throw new RuntimeException("Repository file is encrypted, but password cannot be queried (no listener).");
-			}
-
-			return listener.onUserPassword(null, "Password: ");
-		}
-		else {
-			return options.getPassword();
-		}
-	}
-
 	private boolean askRetryPassword() {
 		retryPasswordCount++;
 
@@ -356,14 +337,7 @@ public class ConnectOperation extends AbstractInitOperation {
 		}
 	}
 
-	private SaltedSecretKey createMasterKeyFromPassword(String masterPassword, byte[] masterKeySalt) throws CipherException {
-		fireNotifyCreateMaster();
-
-		SaltedSecretKey masterKey = CipherUtil.createMasterKey(masterPassword, masterKeySalt);
-		return masterKey;
-	}
-
-	private String decryptRepoFile(File file, SaltedSecretKey masterKey) throws CipherException {
+	private String decryptRepoFile(File file, MasterKey masterKey) throws CipherException {
 		try {
 			logger.log(Level.INFO, "Decrypting repo file ...");
 

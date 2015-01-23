@@ -25,6 +25,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -51,11 +53,10 @@ import org.syncany.chunk.Transformer;
 import org.syncany.chunk.TttdChunker;
 import org.syncany.chunk.ZipMultiChunker;
 import org.syncany.config.Logging;
-import org.syncany.crypto.CipherException;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.database.ChunkEntry.ChunkChecksum;
 import org.syncany.database.MultiChunkEntry.MultiChunkId;
 import org.syncany.tests.util.TestFileUtil;
@@ -68,15 +69,15 @@ public class FrameworkCombinationTest {
 	private File tempDir;	
 	private List<FrameworkCombination> combinations;
 
-	private SaltedSecretKey masterKey;
+	private MasterKey masterKey;
 	
 	static {
 		Logging.init();
 	}		
 	
 	@Before
-	public void initMasterKey() throws CipherException {
-		masterKey = CipherUtil.createMasterKey("some password");
+	public void initMasterKey() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		masterKey = CipherUtil.createMasterKey("some password", "some other password");
 	}
 	
 	@Test

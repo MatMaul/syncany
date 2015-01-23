@@ -28,8 +28,8 @@ import org.simpleframework.xml.convert.AnnotationStrategy;
 import org.simpleframework.xml.convert.Convert;
 import org.simpleframework.xml.core.Persister;
 import org.syncany.config.ConfigException;
-import org.syncany.crypto.SaltedSecretKey;
-import org.syncany.crypto.SaltedSecretKeyConverter;
+import org.syncany.crypto.MasterKey;
+import org.syncany.crypto.MasterKeyConverter;
 
 /**
  * The user config transfer object is a helper data structure that allows storing
@@ -50,8 +50,8 @@ public class UserConfigTO {
 	private boolean preventStandby;
 
 	@Element(name = "configEncryptionKey", required = true)
-	@Convert(SaltedSecretKeyConverter.class)
-	private SaltedSecretKey configEncryptionKey;
+	@Convert(MasterKeyConverter.class)
+	private MasterKey masterKey;
 
 	public UserConfigTO() {
 		this.systemProperties = new TreeMap<String, String>();
@@ -66,12 +66,12 @@ public class UserConfigTO {
 		return preventStandby;
 	}
 
-	public SaltedSecretKey getConfigEncryptionKey() {
-		return configEncryptionKey;
+	public MasterKey getMasterKey() {
+		return masterKey;
 	}
 
-	public void setConfigEncryptionKey(SaltedSecretKey configEncryptionKey) {
-		this.configEncryptionKey = configEncryptionKey;
+	public void setMasterKey(MasterKey masterKey) {
+		this.masterKey = masterKey;
 	}
 
 	public static UserConfigTO load(File file) throws ConfigException {

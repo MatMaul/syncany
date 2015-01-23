@@ -38,7 +38,7 @@ public class GenlinkOperation extends AbstractInitOperation {
 	private ConfigTO configTO;
 
 	public GenlinkOperation(Config config, GenlinkOperationOptions options) {
-		super(config, null);
+		super(config, null, null);
 		this.options = options;
 	}
 

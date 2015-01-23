@@ -41,6 +41,7 @@ import org.syncany.crypto.CipherException;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
+import org.syncany.crypto.MasterKey;
 import org.syncany.crypto.MultiCipherOutputStream;
 import org.syncany.crypto.SaltedSecretKey;
 import org.syncany.tests.util.TestFileUtil;
@@ -55,14 +56,14 @@ public class CipherUtilTest {
 		
 	@Test
 	public void testCreateDerivedKeys() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
-		SaltedSecretKey masterKey = createDummyMasterKey();		
+		MasterKey masterKey = createDummyMasterKey();		
 		CipherSpec cipherSpec = CipherSpecs.getCipherSpec(CipherSpecs.AES_128_GCM);
 		
 		byte[] derivedKeySalt1 = new byte[] { 1, 2, 3 };
 		byte[] derivedKeySalt2 = new byte[] { 1, 2, 3, 4 };
 
-		SaltedSecretKey derivedKey1 = CipherUtil.createDerivedKey(masterKey, derivedKeySalt1, cipherSpec);
-		SaltedSecretKey derivedKey2 = CipherUtil.createDerivedKey(masterKey, derivedKeySalt2, cipherSpec);
+		SaltedSecretKey derivedKey1 = CipherUtil.createDerivedKey(masterKey.getEncryptKey(), derivedKeySalt1, cipherSpec);
+		SaltedSecretKey derivedKey2 = CipherUtil.createDerivedKey(masterKey.getEncryptKey(), derivedKeySalt2, cipherSpec);
 		
 		logger.log(Level.INFO, "- Derived key 1: "+StringUtil.toHex(derivedKey1.getEncoded()));
 		logger.log(Level.INFO, "      with salt: "+StringUtil.toHex(derivedKey1.getSalt()));
@@ -162,7 +163,7 @@ public class CipherUtilTest {
 	}	
 	
 	private void testEncrypt(byte[] originalData, List<CipherSpec> cipherSpecs) throws CipherException {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] ciphertext = CipherUtil.encrypt(
 			new ByteArrayInputStream(originalData), 
@@ -178,7 +179,7 @@ public class CipherUtilTest {
 	
 	@Test(expected = Exception.class)
 	public void testIntegrityHeaderMagic() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] originalPlaintext = TestFileUtil.createRandomArray(50);
 		
@@ -202,7 +203,7 @@ public class CipherUtilTest {
 	
 	@Test(expected = Exception.class)
 	public void testIntegrityHeaderVersion() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] originalPlaintext = TestFileUtil.createRandomArray(50);
 		
@@ -225,7 +226,7 @@ public class CipherUtilTest {
 	
 	@Test(expected = Exception.class)
 	public void testIntegrityHeaderCipherSpecId() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] originalPlaintext = TestFileUtil.createRandomArray(50);
 		
@@ -250,7 +251,7 @@ public class CipherUtilTest {
 	
 	@Test(expected = Exception.class)
 	public void testIntegrityHeaderCipherSalt() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		 
 		byte[] originalPlaintext = TestFileUtil.createRandomArray(50);
 		
@@ -275,7 +276,7 @@ public class CipherUtilTest {
 	
 	@Test(expected = Exception.class)
 	public void testIntegrityHeaderCipherIV() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] originalPlaintext = TestFileUtil.createRandomArray(50);
 		
@@ -300,7 +301,7 @@ public class CipherUtilTest {
 	
 	@Test(expected = CipherException.class)
 	public void testIntegrityAesGcmCiphertext() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] originalPlaintext = TestFileUtil.createRandomArray(50);
 		
@@ -322,7 +323,7 @@ public class CipherUtilTest {
 	
 	@Test(expected = Exception.class)
 	public void testIntegrityTwofishGcmCiphertext() throws Exception {
-		SaltedSecretKey masterKey = createDummyMasterKey();
+		MasterKey masterKey = createDummyMasterKey();
 		
 		byte[] originalPlaintext = TestFileUtil.createRandomArray(50);
 		
@@ -343,8 +344,8 @@ public class CipherUtilTest {
 		fail("TEST FAILED: Ciphertext was altered without exception.");
 	}	
 
-	private SaltedSecretKey createDummyMasterKey() {
-		return new SaltedSecretKey(
+	private MasterKey createDummyMasterKey() {
+		return new MasterKey(
 			new SecretKeySpec(
 				StringUtil.fromHex("44fda24d53b29828b62c362529bd9df5c8a92c2736bcae3a28b3d7b44488e36e246106aa5334813028abb2048eeb5e177df1c702d93cf82aeb7b6d59a8534ff0"),
 				"AnyAlgorithm"

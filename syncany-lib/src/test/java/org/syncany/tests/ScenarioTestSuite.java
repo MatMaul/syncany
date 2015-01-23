@@ -58,6 +58,7 @@ import org.syncany.tests.scenarios.RenameNoDownloadMultiChunksScenarioTest;
 import org.syncany.tests.scenarios.RenameToExistingFileScenarioTest;
 import org.syncany.tests.scenarios.RestoreFileScenarioTest;
 import org.syncany.tests.scenarios.RestrictedXmlCharInFilenameScenarioTest;
+import org.syncany.tests.scenarios.SignatureScenarioTest;
 import org.syncany.tests.scenarios.SingleFileNoConflictsScenarioTest;
 import org.syncany.tests.scenarios.SingleFolderNoConflictsScenarioTest;
 import org.syncany.tests.scenarios.SymlinkSyncScenarioTest;
@@ -105,6 +106,7 @@ import org.syncany.tests.scenarios.SymlinkSyncScenarioTest;
 		SingleFileNoConflictsScenarioTest.class,
 		SingleFolderNoConflictsScenarioTest.class,
 		SymlinkSyncScenarioTest.class,
+		SignatureScenarioTest.class,
 })
 public class ScenarioTestSuite {
 	// This class executes all tests

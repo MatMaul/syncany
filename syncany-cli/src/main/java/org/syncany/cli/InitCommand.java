@@ -95,7 +95,8 @@ public class InitCommand extends AbstractInitCommand {
 		OptionSpec<String> optionPluginOpts = parser.acceptsAll(asList("o", "plugin-option")).withRequiredArg();
 		OptionSpec<Void> optionAddDaemon = parser.acceptsAll(asList("n", "add-daemon"));
 		OptionSpec<Void> optionShortUrl = parser.acceptsAll(asList("s", "short"));
-		OptionSpec<String> optionPassword = parser.acceptsAll(asList("password")).withRequiredArg();
+		OptionSpec<String> optionEncryptPassword = parser.acceptsAll(asList("password", "encryptpassword")).withRequiredArg();
+		OptionSpec<String> optionSignPassword = parser.acceptsAll(asList("signpassword")).withRequiredArg();
 
 		OptionSet options = parser.parse(operationArguments);
 
@@ -123,8 +124,7 @@ public class InitCommand extends AbstractInitCommand {
 		genlinkOptions.setShortUrl(options.has(optionShortUrl));
 
 		// Set repo password
-		String password = validateAndGetPassword(options, optionNoEncryption, optionPassword);
-		operationOptions.setPassword(password);
+		validateAndGetPasswords(options, optionNoEncryption, optionEncryptPassword, optionSignPassword);
 
 		// Create configTO and repoTO
 		ConfigTO configTO = createConfigTO(transferSettings);
@@ -140,33 +140,10 @@ public class InitCommand extends AbstractInitCommand {
 		operationOptions.setDaemon(options.has(optionAddDaemon));
 		operationOptions.setGenlinkOptions(genlinkOptions);
 
+		operationOptions.setEncryptPassword(encryptPassword);
+		operationOptions.setSignPassword(signPassword);
+		
 		return operationOptions;
-	}
-
-	private String validateAndGetPassword(OptionSet options, OptionSpec<Void> optionNoEncryption, OptionSpec<String> optionPassword) {
-		if (!isInteractive) {
-			if (options.has(optionPassword) && options.has(optionNoEncryption)) {
-				throw new IllegalArgumentException("Cannot provide --password and --no-encryption. Conflicting options.");
-			}
-			else if (!options.has(optionPassword) && !options.has(optionNoEncryption)) {
-				throw new IllegalArgumentException("Non-interactive must either provide --no-encryption or --password.");
-			}
-			else if (options.has(optionPassword) && !options.has(optionNoEncryption)) {
-				String password = options.valueOf(optionPassword);
-
-				if (password.length() < PASSWORD_MIN_LENGTH) {
-					throw new IllegalArgumentException("This password is not allowed (too short, min. " + PASSWORD_MIN_LENGTH + " chars)");
-				}
-
-				return options.valueOf(optionPassword);
-			}
-			else {
-				return null; // No encryption, no password.
-			}
-		}
-		else {
-			return null; // Will be set in callback!
-		}
 	}
 
 	@Override
@@ -225,6 +202,11 @@ public class InitCommand extends AbstractInitCommand {
 			out.println();
 			out.println("ERROR: Cannot connect to repository. Unknown error code: " + concreteOperationResult.getResultCode());
 			out.println();
+//=======
+//		if (cipherSuites.size() > 0) {	
+//			transformersTO.add(getCipherTransformerTO(cipherSuites));
+//			transformersTO.add(getSignatureTransformerTO());
+//>>>>>>> origin/sign-transformer
 		}
 	}
 
@@ -320,4 +302,5 @@ public class InitCommand extends AbstractInitCommand {
 
 		return cipherSpecs;
 	}
+	
 }

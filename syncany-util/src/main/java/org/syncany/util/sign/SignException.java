@@ -15,30 +15,20 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-package org.syncany.operations.init;
+package org.syncany.util.sign;
 
+import java.io.IOException;
 
-public class ConnectOperationOptions extends AbstractInitOperationOptions {
-	public enum ConnectOptionsStrategy {
-		CONNECTION_LINK, CONNECTION_TO
-	}		
-	
-	private ConnectOptionsStrategy strategy = ConnectOptionsStrategy.CONNECTION_TO;
-	private String connectLink;
-	
-	public ConnectOptionsStrategy getStrategy() {
-		return strategy;
+/**
+ * @author matmaul
+ *
+ */
+public class SignException extends IOException {
+
+	public SignException(String msg) {
+		super(msg);
 	}
 
-	public void setStrategy(ConnectOptionsStrategy strategy) {
-		this.strategy = strategy;
-	}
+	private static final long serialVersionUID = -7368141167852442952L;
 
-	public String getConnectLink() {
-		return connectLink;
-	}
-
-	public void setConnectLink(String connectionLink) {
-		this.connectLink = connectionLink;
-	}
 }

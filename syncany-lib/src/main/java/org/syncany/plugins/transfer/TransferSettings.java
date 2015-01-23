@@ -247,14 +247,14 @@ public abstract class TransferSettings {
 
 	public static String decrypt(String encryptedHexString) throws CipherException {
 		byte[] encryptedBytes = StringUtil.fromHex(encryptedHexString);
-		byte[] decryptedBytes = CipherUtil.decrypt(new ByteArrayInputStream(encryptedBytes), UserConfig.getConfigEncryptionKey());
+		byte[] decryptedBytes = CipherUtil.decrypt(new ByteArrayInputStream(encryptedBytes), UserConfig.getMasterKey());
 		
 		return new String(decryptedBytes);
 	}
 
 	public static String encrypt(String decryptedPlainString) throws CipherException {
 		InputStream plaintextInputStream = IOUtils.toInputStream(decryptedPlainString);
-		byte[] encryptedBytes = CipherUtil.encrypt(plaintextInputStream, CipherSpecs.getDefaultCipherSpecs(), UserConfig.getConfigEncryptionKey());
+		byte[] encryptedBytes = CipherUtil.encrypt(plaintextInputStream, CipherSpecs.getDefaultCipherSpecs(), UserConfig.getMasterKey());
 		
 		return StringUtil.toHex(encryptedBytes);
 	}

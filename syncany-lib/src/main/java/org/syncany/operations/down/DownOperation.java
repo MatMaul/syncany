@@ -23,6 +23,7 @@ import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -309,16 +310,20 @@ public class DownOperation extends AbstractTransferOperation {
 		// Read database files
 		TreeMap<DatabaseRemoteFile, List<DatabaseVersion>> remoteDatabaseHeaders = new TreeMap<DatabaseRemoteFile, List<DatabaseVersion>>();
 
-		for (Map.Entry<File, DatabaseRemoteFile> remoteDatabaseFileEntry : remoteDatabases.entrySet()) {
+		Iterator<Entry<File, DatabaseRemoteFile>> remoteDatabasesIt = remoteDatabases.entrySet().iterator();
+		while(remoteDatabasesIt.hasNext()) {
+			Map.Entry<File, DatabaseRemoteFile> remoteDatabaseFileEntry = remoteDatabasesIt.next();
 			MemoryDatabase remoteDatabase = new MemoryDatabase(); // Database cannot be reused, since these might be different clients
 
 			File remoteDatabaseFileInCache = remoteDatabaseFileEntry.getKey();
 			DatabaseRemoteFile remoteDatabaseFile = remoteDatabaseFileEntry.getValue();
 
-			databaseSerializer.load(remoteDatabase, remoteDatabaseFileInCache, null, null, DatabaseReadType.HEADER_ONLY); // only load headers!
+			boolean correctlySigned = databaseSerializer.load(remoteDatabase, remoteDatabaseFileInCache, null, null, DatabaseReadType.HEADER_ONLY); // only load headers!
 
-			remoteDatabaseHeaders.put(remoteDatabaseFile, remoteDatabase.getDatabaseVersions());
-
+			if (correctlySigned)
+				remoteDatabaseHeaders.put(remoteDatabaseFile, remoteDatabase.getDatabaseVersions());
+			else
+				remoteDatabasesIt.remove();
 		}
 
 		return remoteDatabaseHeaders;

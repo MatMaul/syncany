@@ -70,7 +70,8 @@ public class ConnectOperationTest {
 		ConnectOperationOptions connectOperationOptionsB = new ConnectOperationOptions();
 		connectOperationOptionsB.setStrategy(ConnectOptionsStrategy.CONNECTION_TO);
 		connectOperationOptionsB.setConfigTO(connectionConfigToB);
-		connectOperationOptionsB.setPassword(initOperationOptionsA.getPassword());
+		connectOperationOptionsB.setEncryptPassword(initOperationOptionsA.getEncryptPassword());
+		connectOperationOptionsB.setSignPassword(initOperationOptionsA.getSignPassword());
 		connectOperationOptionsB.setLocalDir(localDirB);
 
 		ConnectOperation connectOperationB = new ConnectOperation(connectOperationOptionsB, null);
@@ -115,7 +116,8 @@ public class ConnectOperationTest {
 		ConnectOperationOptions connectOperationOptionsB = new ConnectOperationOptions();
 		connectOperationOptionsB.setStrategy(ConnectOptionsStrategy.CONNECTION_TO);
 		connectOperationOptionsB.setConfigTO(connectionConfigToB);
-		connectOperationOptionsB.setPassword(initOperationOptionsA.getPassword());
+		connectOperationOptionsB.setEncryptPassword(initOperationOptionsA.getEncryptPassword());
+		connectOperationOptionsB.setSignPassword(initOperationOptionsA.getSignPassword());
 		connectOperationOptionsB.setLocalDir(localDirB);
 
 		ConnectOperation connectOperationB = new ConnectOperation(connectOperationOptionsB, null);

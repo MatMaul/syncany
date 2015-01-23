@@ -47,14 +47,14 @@ import org.syncany.config.Logging;
 import org.syncany.crypto.CipherException;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
+import org.syncany.crypto.MasterKey;
 import org.syncany.crypto.MultiCipherOutputStream;
-import org.syncany.crypto.SaltedSecretKey;
 import org.syncany.util.StringUtil;
 import org.xml.sax.helpers.DefaultHandler;
 
 public class MultiCipherStreamsTest {
 	private static final Logger logger = Logger.getLogger(MultiCipherStreamsTest.class.getSimpleName());			
-	private static SaltedSecretKey masterKey;
+	private static MasterKey masterKey;
 	
 	static {
 		Logging.init();
@@ -201,8 +201,8 @@ public class MultiCipherStreamsTest {
 		return decryptedData;
 	}	
 	
-	private SaltedSecretKey createDummyMasterKey() {
-		return new SaltedSecretKey(
+	private MasterKey createDummyMasterKey() {
+		return new MasterKey(
 			new SecretKeySpec(
 				StringUtil.fromHex("44fda24d53b29828b62c362529bd9df5c8a92c2736bcae3a28b3d7b44488e36e246106aa5334813028abb2048eeb5e177df1c702d93cf82aeb7b6d59a8534ff0"),
 				"AnyAlgorithm"

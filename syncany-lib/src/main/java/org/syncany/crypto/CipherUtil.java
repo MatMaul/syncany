@@ -21,10 +21,11 @@ import static org.syncany.crypto.CipherParams.CRYPTO_PROVIDER;
 import static org.syncany.crypto.CipherParams.CRYPTO_PROVIDER_ID;
 import static org.syncany.crypto.CipherParams.KEY_DERIVATION_DIGEST;
 import static org.syncany.crypto.CipherParams.KEY_DERIVATION_INFO;
+import static org.syncany.crypto.CipherParams.MASTER_ENCRYPT_KEY_SIZE;
 import static org.syncany.crypto.CipherParams.MASTER_KEY_DERIVATION_FUNCTION;
 import static org.syncany.crypto.CipherParams.MASTER_KEY_DERIVATION_ROUNDS;
-import static org.syncany.crypto.CipherParams.MASTER_KEY_SALT_SIZE;
-import static org.syncany.crypto.CipherParams.MASTER_KEY_SIZE;
+import static org.syncany.crypto.CipherParams.MASTER_SIGNATURE_KEY_SIZE;
+import static org.syncany.crypto.CipherParams.MAST_KEY_SALT_SIZE;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -40,6 +41,8 @@ import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Security;
 import java.security.SignatureException;
@@ -64,6 +67,10 @@ import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.TrustManagerFactory;
+
+import net.i2p.crypto.eddsa.spec.EdDSANamedCurveTable;
+import net.i2p.crypto.eddsa.spec.EdDSAPrivateKeySpec;
+import net.i2p.crypto.eddsa.spec.EdDSAPublicKeySpec;
 
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x500.X500NameBuilder;
@@ -258,26 +265,62 @@ public class CipherUtil {
 		return new SaltedSecretKey(toSecretKey(secretKeyBytes, algorithm), saltBytes);
 	}
 
-	public static SaltedSecretKey createMasterKey(String password) throws CipherException {
-		byte[] salt = createRandomArray(MASTER_KEY_SALT_SIZE / 8);
-		return createMasterKey(password, salt);
+	public static MasterKey createMasterKey(String encryptPassword, String signPassword) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		return createMasterKey(encryptPassword, signPassword, null);
+	}
+	
+	public static MasterKey createMasterKey(String encryptPassword, String signPassword, byte[] salt) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		if (salt == null) {
+			salt = createRandomArray(MAST_KEY_SALT_SIZE/8);
+		}
+
+		SecretKey encryptKey = createSecretKey(encryptPassword, salt, MASTER_ENCRYPT_KEY_SIZE);
+		
+		PrivateKey signKey = null;
+		if (signPassword != null && !"".equals(signPassword)) {
+			signKey = createSignKey(signPassword, salt);
+		}
+		
+
+		return new MasterKey(encryptKey, salt, signKey);
 	}
 
-	public static SaltedSecretKey createMasterKey(String password, byte[] salt) throws CipherException {
-		try {
-			logger.log(Level.FINE, "- Creating secret key using {0} with {1} rounds, key size {2} bit ...", new Object[] { MASTER_KEY_DERIVATION_FUNCTION,
-					MASTER_KEY_DERIVATION_ROUNDS, MASTER_KEY_SIZE });
-	
-			SecretKeyFactory factory = SecretKeyFactory.getInstance(MASTER_KEY_DERIVATION_FUNCTION);
-			KeySpec pbeKeySpec = new PBEKeySpec(password.toCharArray(), salt, MASTER_KEY_DERIVATION_ROUNDS, MASTER_KEY_SIZE);
-			SecretKey masterKey = factory.generateSecret(pbeKeySpec);
-	
-			return new SaltedSecretKey(masterKey, salt);
-		}
-		catch (Exception e) {
-			throw new CipherException(e);
+	public static SecretKey createSecretKey(String password, byte[] salt, int keySize) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		logger.log(Level.INFO, "Creating secret key using {0} with {1} rounds, key size {2} bit ...", new Object[] { MASTER_KEY_DERIVATION_FUNCTION,
+				MASTER_KEY_DERIVATION_ROUNDS, keySize });
+
+    	SecretKeyFactory factory = SecretKeyFactory.getInstance(MASTER_KEY_DERIVATION_FUNCTION);
+        KeySpec pbeKeySpec = new PBEKeySpec(password.toCharArray(), salt, MASTER_KEY_DERIVATION_ROUNDS, keySize);
+        SecretKey encryptKey = factory.generateSecret(pbeKeySpec);
+        
+        return encryptKey;
+    }
+
+	public static PublicKey createVerifyKey(PrivateKey signKey) {
+		if (signKey instanceof EdDSAPrivateKey) {
+			EdDSAPublicKeySpec pub = new EdDSAPublicKeySpec(((EdDSAPrivateKey) signKey).getA(), EdDSANamedCurveTable.getByName(EdDSANamedCurveTable.CURVE_ED25519_SHA512));
+			return new EdDSAPublicKey(pub);
+		} else {
+			throw new RuntimeException("Unsupported signature key");
 		}
 	}
+	
+	public static PublicKey createVerifyKey(byte[] pk) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		return new EdDSAPublicKey(new EdDSAPublicKeySpec(pk, EdDSANamedCurveTable.getByName(EdDSANamedCurveTable.CURVE_ED25519_SHA512)));
+	}
+	
+	public static PrivateKey createSignKey(byte[] seed) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		return new EdDSAPrivateKey(new EdDSAPrivateKeySpec(seed, EdDSANamedCurveTable.getByName(EdDSANamedCurveTable.CURVE_ED25519_SHA512)));
+	}
+
+	public static PrivateKey createSignKey(String password, byte[] salt) throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		logger.log(Level.INFO, "Creating sign key using {0} with {1} rounds...", new Object[] { MASTER_KEY_DERIVATION_FUNCTION,
+				MASTER_KEY_DERIVATION_ROUNDS });
+        KeySpec pbeKeySpec = new PBEKeySpec(password.toCharArray(), salt, MASTER_KEY_DERIVATION_ROUNDS, MASTER_SIGNATURE_KEY_SIZE);
+        byte[] seed = SecretKeyFactory.getInstance(MASTER_KEY_DERIVATION_FUNCTION).generateSecret(pbeKeySpec).getEncoded();
+
+        return createSignKey(seed);
+    }
 
 	public static boolean isEncrypted(File file) throws IOException {
 		byte[] actualMagic = new byte[MultiCipherOutputStream.STREAM_MAGIC.length];
@@ -290,7 +333,7 @@ public class CipherUtil {
 	}
 
 	public static void encrypt(InputStream plaintextInputStream, OutputStream ciphertextOutputStream, List<CipherSpec> cipherSpecs,
-			SaltedSecretKey masterKey) throws CipherException {
+			MasterKey masterKey) throws CipherException {
 
 		try {
 			CipherSession cipherSession = new CipherSession(masterKey);
@@ -311,14 +354,14 @@ public class CipherUtil {
 		}
 	}
 
-	public static byte[] encrypt(InputStream plaintextInputStream, List<CipherSpec> cipherSuites, SaltedSecretKey masterKey) throws CipherException {
+	public static byte[] encrypt(InputStream plaintextInputStream, List<CipherSpec> cipherSuites, MasterKey masterKey) throws CipherException {
 		ByteArrayOutputStream ciphertextOutputStream = new ByteArrayOutputStream();
 		encrypt(plaintextInputStream, ciphertextOutputStream, cipherSuites, masterKey);
 
 		return ciphertextOutputStream.toByteArray();
 	}
 
-	public static byte[] decrypt(InputStream fromInputStream, SaltedSecretKey masterKey) throws CipherException {
+	public static byte[] decrypt(InputStream fromInputStream, MasterKey masterKey) throws CipherException {
 		try {
 			CipherSession cipherSession = new CipherSession(masterKey);
 			MultiCipherInputStream multiCipherInputStream = new MultiCipherInputStream(fromInputStream, cipherSession);

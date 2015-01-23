@@ -17,6 +17,8 @@
  */
 package org.syncany.crypto;
 
+import java.security.PrivateKey;
+
 import javax.crypto.spec.SecretKeySpec;
 
 import org.simpleframework.xml.convert.Converter;
@@ -25,21 +27,31 @@ import org.simpleframework.xml.stream.OutputNode;
 import org.syncany.util.StringUtil;
 
 /**
- * Converter to properly encode a {@link SaltedSecretKey} when writing 
+ * Converter to properly encode a {@link MasterKey} when writing 
  * an XML. Salt and key are serialized as attributes.
  * 
  * @author Christian Roth <christian.roth@port17.de>
  */
-public class SaltedSecretKeyConverter implements Converter<SaltedSecretKey> {
-	public SaltedSecretKey read(InputNode node) throws Exception {
-		byte[] saltBytes = StringUtil.fromHex(node.getAttribute("salt").getValue());
-		byte[] keyBytes = StringUtil.fromHex(node.getAttribute("key").getValue());
+public class MasterKeyConverter implements Converter<MasterKey> {
 
-		return new SaltedSecretKey(new SecretKeySpec(keyBytes, CipherParams.MASTER_KEY_DERIVATION_FUNCTION), saltBytes);
+	public MasterKey read(InputNode node) throws Exception {
+		byte[] saltBytes = StringUtil.fromHex(node.getAttribute("salt").getValue());
+		byte[] encryptKeyBytes = StringUtil.fromHex(node.getAttribute("encryptkey").getValue());
+		byte[] signKeyBytes = StringUtil.fromHex(node.getAttribute("signkey").getValue());
+
+		PrivateKey signKey = null;
+		if (signKeyBytes != null && !(signKeyBytes.length == 0)) {
+			signKey = CipherUtil.createSignKey(signKeyBytes);
+		}
+
+		return new MasterKey(new SecretKeySpec(encryptKeyBytes, CipherParams.MASTER_KEY_DERIVATION_FUNCTION), saltBytes, signKey);
 	}
 
-	public void write(OutputNode node, SaltedSecretKey saltedSecretKey) {
-		node.setAttribute("salt", StringUtil.toHex(saltedSecretKey.getSalt()));
-		node.setAttribute("key", StringUtil.toHex(saltedSecretKey.getEncoded()));
+	public void write(OutputNode node, MasterKey masterKey) {
+		node.setAttribute("salt", StringUtil.toHex(masterKey.getSalt()));
+		node.setAttribute("encryptkey", StringUtil.toHex(masterKey.getEncryptKey().getEncoded()));
+		if (masterKey.getSignKey() != null) {
+			node.setAttribute("signkey", StringUtil.toHex(masterKey.getSignKey().getEncoded()));
+		}
 	}
 }

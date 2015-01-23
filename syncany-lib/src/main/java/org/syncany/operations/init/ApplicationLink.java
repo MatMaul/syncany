@@ -52,6 +52,7 @@ import org.simpleframework.xml.stream.Format;
 import org.syncany.crypto.CipherSpec;
 import org.syncany.crypto.CipherSpecs;
 import org.syncany.crypto.CipherUtil;
+import org.syncany.crypto.MasterKey;
 import org.syncany.crypto.SaltedSecretKey;
 import org.syncany.plugins.Plugins;
 import org.syncany.plugins.transfer.StorageException;
@@ -134,7 +135,7 @@ public class ApplicationLink {
 		return masterKeySalt;
 	}
 
-	public TransferSettings createTransferSettings(SaltedSecretKey masterKey) throws Exception {
+	public TransferSettings createTransferSettings(MasterKey masterKey) throws Exception {
 		if (!encrypted || encryptedSettingsBytes == null) {
 			throw new IllegalArgumentException("Link is not encrypted. Cannot call this method.");
 		}
@@ -151,7 +152,7 @@ public class ApplicationLink {
 		return createTransferSettings(plaintextSettingsBytes);
 	}
 
-	public String createEncryptedLink(SaltedSecretKey masterKey) throws Exception {
+	public String createEncryptedLink(MasterKey masterKey) throws Exception {
 		byte[] plaintextStorageXml = getPlaintextStorageXml();
 		List<CipherSpec> cipherSpecs = CipherSpecs.getDefaultCipherSpecs(); // TODO [low] Shouldn't this be the same as the application?!
 

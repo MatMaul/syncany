@@ -28,7 +28,7 @@ import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.MasterTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.operations.init.InitOperationResult.InitResultCode;
 import org.syncany.plugins.Plugins;
 import org.syncany.plugins.UserInteractionListener;
@@ -65,7 +65,7 @@ public class InitOperation extends AbstractInitOperation {
 	private TransferManager transferManager;
 
 	public InitOperation(InitOperationOptions options, UserInteractionListener listener) {
-		super(null, listener);
+		super(null, options, listener);
 
 		this.options = options;
 		this.result = new InitOperationResult();
@@ -93,13 +93,6 @@ public class InitOperation extends AbstractInitOperation {
 
 		logger.log(Level.INFO, "- Connecting to the repo was successful");
 
-		// Ask password (if needed)
-		String masterKeyPassword = null;
-
-		if (options.isEncryptionEnabled()) {
-			masterKeyPassword = getOrAskPassword();
-		}
-
 		// Create local .syncany directory
 		File appDir = createAppDirs(options.getLocalDir()); // TODO [medium] create temp dir first, ask password cannot be done after
 		File configFile = new File(appDir, Config.FILE_CONFIG);
@@ -108,7 +101,8 @@ public class InitOperation extends AbstractInitOperation {
 
 		// Save config.xml and repo file
 		if (options.isEncryptionEnabled()) {
-			SaltedSecretKey masterKey = createMasterKeyFromPassword(masterKeyPassword); // This takes looong!
+			// Ask password (if needed)
+			MasterKey masterKey = getOrAskPasswords(null); // This takes looong!
 			options.getConfigTO().setMasterKey(masterKey);
 
 			new MasterTO(masterKey.getSalt()).save(masterFile);
@@ -210,26 +204,6 @@ public class InitOperation extends AbstractInitOperation {
 
 	private GenlinkOperationResult generateLink(ConfigTO configTO) throws Exception {
 		return new GenlinkOperation(options.getConfigTO(), options.getGenlinkOptions()).execute();
-	}
-
-	private String getOrAskPassword() throws Exception {
-		if (options.getPassword() == null) {
-			if (listener == null) {
-				throw new RuntimeException("Cannot get password from user interface. No listener.");
-			}
-
-			return listener.onUserNewPassword();
-		}
-		else {
-			return options.getPassword();
-		}
-	}
-
-	private SaltedSecretKey createMasterKeyFromPassword(String masterPassword) throws Exception {
-		fireNotifyCreateMaster();
-
-		SaltedSecretKey masterKey = CipherUtil.createMasterKey(masterPassword);
-		return masterKey;
 	}
 
 	protected boolean repoFileExistsOnRemoteStorage(TransferManager transferManager) throws Exception {

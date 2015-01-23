@@ -40,6 +40,10 @@ public class SaltedSecretKey implements SecretKey {
 		this.secretKey = secretKey;
 		this.salt = salt;
 	}
+	
+	public SecretKey getSecretKey() {
+		return secretKey;
+	}
 
 	public byte[] getSalt() {
 		return salt;

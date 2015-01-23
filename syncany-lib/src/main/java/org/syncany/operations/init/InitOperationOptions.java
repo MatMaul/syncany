@@ -17,23 +17,16 @@
  */
 package org.syncany.operations.init;
 
-import java.io.File;
 import java.util.List;
 
-import org.syncany.config.to.ConfigTO;
 import org.syncany.config.to.RepoTO;
 import org.syncany.crypto.CipherSpec;
-import org.syncany.operations.OperationOptions;
 
-public class InitOperationOptions implements OperationOptions {
+public class InitOperationOptions extends AbstractInitOperationOptions {
 	private boolean createTarget;
-	private File localDir;
-	private ConfigTO configTO;
 	private RepoTO repoTO;
 	private boolean encryptionEnabled;
 	private List<CipherSpec> cipherSpecs;
-	private String password;
-	private boolean daemon;
 	private GenlinkOperationOptions genlinkOptions;
 
 	public InitOperationOptions() {
@@ -46,22 +39,6 @@ public class InitOperationOptions implements OperationOptions {
 
 	public void setCreateTarget(boolean createTarget) {
 		this.createTarget = createTarget;
-	}
-
-	public File getLocalDir() {
-		return localDir;
-	}
-
-	public void setLocalDir(File localDir) {
-		this.localDir = localDir;
-	}
-
-	public ConfigTO getConfigTO() {
-		return configTO;
-	}
-
-	public void setConfigTO(ConfigTO configTO) {
-		this.configTO = configTO;
 	}
 
 	public RepoTO getRepoTO() {
@@ -86,22 +63,6 @@ public class InitOperationOptions implements OperationOptions {
 
 	public void setCipherSpecs(List<CipherSpec> cipherSpecs) {
 		this.cipherSpecs = cipherSpecs;
-	}
-
-	public String getPassword() {
-		return password;
-	}
-
-	public void setPassword(String password) {
-		this.password = password;
-	}
-
-	public boolean isDaemon() {
-		return daemon;
-	}
-
-	public void setDaemon(boolean daemon) {
-		this.daemon = daemon;
 	}
 
 	public GenlinkOperationOptions getGenlinkOptions() {

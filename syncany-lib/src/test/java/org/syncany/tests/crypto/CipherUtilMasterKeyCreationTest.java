@@ -21,16 +21,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.junit.Test;
 import org.syncany.config.Logging;
-import org.syncany.crypto.CipherException;
 import org.syncany.crypto.CipherParams;
 import org.syncany.crypto.CipherUtil;
-import org.syncany.crypto.SaltedSecretKey;
+import org.syncany.crypto.MasterKey;
 import org.syncany.util.StringUtil;
 
 public class CipherUtilMasterKeyCreationTest {
@@ -41,41 +43,41 @@ public class CipherUtilMasterKeyCreationTest {
 	}
 	
 	@Test
-	public void testCreateMasterKeyWithSalt() throws CipherException {
+	public void testCreateMasterKeyWithSalt() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
 		long timeStart = System.currentTimeMillis();
 		
-		SaltedSecretKey masterKeyForPasswordTestAndSalt123 = CipherUtil.createMasterKey("Test", new byte[] { 1, 2, 3 });
+		MasterKey masterKeyForPasswordTestAndSalt123 = CipherUtil.createMasterKey("Test", "", new byte[] { 1, 2, 3 });
 		
 		long timeEnd = System.currentTimeMillis();
 		long timeDuration = timeEnd - timeStart;
 
 		logger.log(Level.INFO, "Creating master key took "+timeDuration+"ms:");
-		logger.log(Level.INFO, " - Key:  "+StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncoded()));
+		logger.log(Level.INFO, " - Key:  "+StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncryptKey().getEncoded()));
 		logger.log(Level.INFO, " - Salt: "+StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getSalt()));
 						
 		assertEquals("010203", StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getSalt()));
 		assertEquals("44fda24d53b29828b62c362529bd9df5c8a92c2736bcae3a28b3d7b44488e36e246106aa5334813028abb2048eeb5e177df1c702d93cf82aeb7b6d59a8534ff0",
-			StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncoded()));
+			StringUtil.toHex(masterKeyForPasswordTestAndSalt123.getEncryptKey().getEncoded()));
 
-		assertEquals(CipherParams.MASTER_KEY_SIZE/8, masterKeyForPasswordTestAndSalt123.getEncoded().length); 
-		assertEquals("PBKDF2WithHmacSHA1", masterKeyForPasswordTestAndSalt123.getAlgorithm());
-		assertEquals("RAW", masterKeyForPasswordTestAndSalt123.getFormat());
+		assertEquals(CipherParams.MASTER_ENCRYPT_KEY_SIZE/8, masterKeyForPasswordTestAndSalt123.getEncryptKey().getEncoded().length); 
+		assertEquals("PBKDF2WithHmacSHA1", masterKeyForPasswordTestAndSalt123.getEncryptKey().getAlgorithm());
+		assertEquals("RAW", masterKeyForPasswordTestAndSalt123.getEncryptKey().getFormat());
 		 
 		assertTrue(timeDuration > 5000);
 	}
 	
 	@Test
-	public void testCreateMasterKeyNoSalt() throws CipherException {
-		SaltedSecretKey masterKeyForPasswordTestNoSalt1 = CipherUtil.createMasterKey("Test");
-		SaltedSecretKey masterKeyForPasswordTestNoSalt2 = CipherUtil.createMasterKey("Test");
+	public void testCreateMasterKeyNoSalt() throws InvalidKeySpecException, NoSuchAlgorithmException, NoSuchProviderException {
+		MasterKey masterKeyForPasswordTestNoSalt1 = CipherUtil.createMasterKey("Test", "");
+		MasterKey masterKeyForPasswordTestNoSalt2 = CipherUtil.createMasterKey("Test", "");
 						
 		logger.log(Level.INFO, "Key comparison for password 'Test':");
-		logger.log(Level.INFO, "- Master key 1: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt1.getEncoded()));
+		logger.log(Level.INFO, "- Master key 1: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt1.getEncryptKey().getEncoded()));
 		logger.log(Level.INFO, "     with salt: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt1.getSalt()));
-		logger.log(Level.INFO, "- Master key 2: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt2.getEncoded()));
+		logger.log(Level.INFO, "- Master key 2: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt2.getEncryptKey().getEncoded()));
 		logger.log(Level.INFO, "     with salt: "+StringUtil.toHex(masterKeyForPasswordTestNoSalt2.getSalt()));
 		
 		assertFalse(Arrays.equals(masterKeyForPasswordTestNoSalt1.getSalt(), masterKeyForPasswordTestNoSalt2.getSalt()));
-		assertFalse(Arrays.equals(masterKeyForPasswordTestNoSalt1.getEncoded(), masterKeyForPasswordTestNoSalt2.getEncoded()));
+		assertFalse(Arrays.equals(masterKeyForPasswordTestNoSalt1.getEncryptKey().getEncoded(), masterKeyForPasswordTestNoSalt2.getEncryptKey().getEncoded()));
 	}	
 }

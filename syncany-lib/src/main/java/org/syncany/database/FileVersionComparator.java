@@ -201,7 +201,7 @@ public class FileVersionComparator {
 			logger.log(Level.INFO, "     - " + fileComparison.fileChanges
 					+ ": Local file DIFFERS from file version, expected CHECKSUM = {0}, but actual CHECKSUM = {1}, for file {2}",
 					new Object[] { fileComparison.expectedFileProperties.checksum, fileComparison.actualFileProperties.checksum,
-							fileComparison.actualFileProperties.getRelativePath() });
+					fileComparison.actualFileProperties.getRelativePath() });
 		}
 	}
 
@@ -233,7 +233,7 @@ public class FileVersionComparator {
 
 		boolean actualIsNull = fileComparison.actualFileProperties == null || fileComparison.actualFileProperties.getPosixPermissions() == null;
 		boolean expectedIsNull = fileComparison.expectedFileProperties == null || fileComparison.expectedFileProperties.getPosixPermissions() == null;
-				
+
 		if (!actualIsNull && !expectedIsNull) {
 			if (!fileComparison.actualFileProperties.getPosixPermissions().equals(fileComparison.expectedFileProperties.getPosixPermissions())) {
 				posixPermsDiffer = true;
@@ -242,7 +242,7 @@ public class FileVersionComparator {
 		else if ((actualIsNull && !expectedIsNull) || (!actualIsNull && expectedIsNull)) {
 			posixPermsDiffer = true;
 		}
-		
+
 		if (posixPermsDiffer) {
 			fileComparison.fileChanges.add(FileChange.CHANGED_ATTRIBUTES);
 
@@ -258,7 +258,7 @@ public class FileVersionComparator {
 
 		boolean actualIsNull = fileComparison.actualFileProperties == null || fileComparison.actualFileProperties.getDosAttributes() == null;
 		boolean expectedIsNull = fileComparison.expectedFileProperties == null || fileComparison.expectedFileProperties.getDosAttributes() == null;
-			
+
 		if (!actualIsNull && !expectedIsNull) {
 			if (!fileComparison.actualFileProperties.getDosAttributes().equals(fileComparison.expectedFileProperties.getDosAttributes())) {
 				dosAttrsDiffer = true;
@@ -267,7 +267,7 @@ public class FileVersionComparator {
 		else if ((actualIsNull && !expectedIsNull) || (!actualIsNull && expectedIsNull)) {
 			dosAttrsDiffer = true;
 		}
-		
+
 		if (dosAttrsDiffer) {
 			fileComparison.fileChanges.add(FileChange.CHANGED_ATTRIBUTES);
 
@@ -358,7 +358,7 @@ public class FileVersionComparator {
 			logger.log(Level.INFO, "     - " + fileComparison.fileChanges
 					+ ": Local file DIFFERS from file version, expected EXISTS = {0}, but actual EXISTS = {1}, for file {2}",
 					new Object[] { fileComparison.expectedFileProperties.exists(), fileComparison.actualFileProperties.exists(),
-							fileComparison.actualFileProperties.getRelativePath() });
+					fileComparison.actualFileProperties.getRelativePath() });
 
 			return true;
 		}
@@ -385,12 +385,16 @@ public class FileVersionComparator {
 		return false;
 	}
 
+	/**
+	 * @param knownChecksum if present will be used as this as a checksum for the file (no computation)
+	 * @param forceChecksum the checksum will be computed only if knownChecksum is null : the returned checksum can be null if knownChecksum == null && forceChecksum 
+	 */
 	public FileProperties captureFileProperties(File file, FileChecksum knownChecksum, boolean forceChecksum) {
 		FileProperties fileProperties = new FileProperties();
 		fileProperties.relativePath = FileUtil.getRelativeDatabasePath(rootFolder, file);
 
 		Path filePath = null;
-		
+
 		try {
 			filePath = Paths.get(file.getAbsolutePath());
 			fileProperties.exists = Files.exists(filePath, LinkOption.NOFOLLOW_LINKS);
@@ -398,9 +402,9 @@ public class FileVersionComparator {
 		catch (InvalidPathException e) {
 			// This throws an exception if the filename is invalid,
 			// e.g. colon in filename on windows "file:name"
-			
+
 			logger.log(Level.WARNING, "- Path '{0}' is invalid on this file system. It cannot exist. ", file.getAbsolutePath());
-			
+
 			fileProperties.exists = false;
 			return fileProperties;
 		}
