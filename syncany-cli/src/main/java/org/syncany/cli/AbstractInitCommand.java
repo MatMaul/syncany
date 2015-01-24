@@ -649,7 +649,7 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 	}
 
 	@Override
-	public String onUserPassword(String header, String message, boolean allowEmpty) {
+	public String onUserPassword(String header, String message, boolean confirm, boolean allowEmpty) {
 		if (!isInteractive) {
 			throw new RuntimeException("Repository is encrypted, but no password was given in non-interactive mode.");			
 		}
@@ -665,7 +665,7 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 			message += ": ";
 		}
 
-		return askPassword(message, true, true, allowEmpty);
+		return askPassword(message, confirm, true, allowEmpty);
 	}
 
 	protected String askPassword(String label, boolean confirm, boolean checkLength, boolean allowEmpty) {
@@ -719,13 +719,13 @@ public abstract class AbstractInitCommand extends Command implements UserInterac
 	
 	protected void validateAndGetPasswords(OptionSet options, OptionSpec<Void> optionNoEncryption, OptionSpec<String> optionEncryptPassword, OptionSpec<String> optionSignPassword) {
 		if (!isInteractive) {
-			if ((options.has(optionEncryptPassword) || options.has(optionSignPassword)) && options.has(optionNoEncryption)) {
+			if (optionNoEncryption != null && options.has(optionEncryptPassword)  && options.has(optionNoEncryption)) {
 				throw new IllegalArgumentException("Cannot provide a password and --no-encryption. Conflicting options.");
 			}
-			else if (!options.has(optionEncryptPassword) && !options.has(optionNoEncryption)) {
+			else if (optionNoEncryption != null && !options.has(optionEncryptPassword) && !options.has(optionNoEncryption)) {
 				throw new IllegalArgumentException("Non-interactive must either provide --no-encryption or --password.");
 			}
-			else if (options.has(optionEncryptPassword) && !options.has(optionNoEncryption)) {
+			else if (options.has(optionEncryptPassword) && (optionNoEncryption == null || !options.has(optionNoEncryption))) {
 				encryptPassword = options.valueOf(optionEncryptPassword);
 
 				if (encryptPassword.length() < PASSWORD_MIN_LENGTH) {

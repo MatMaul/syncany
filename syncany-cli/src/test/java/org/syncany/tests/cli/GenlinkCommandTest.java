@@ -17,10 +17,12 @@
  */
 package org.syncany.tests.cli;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 import static org.junit.contrib.java.lang.system.TextFromStandardInputStream.emptyStandardInputStream;
 
 import java.io.File;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.junit.Rule;
@@ -30,6 +32,7 @@ import org.syncany.cli.CommandLineClient;
 import org.syncany.tests.util.TestCliUtil;
 import org.syncany.tests.util.TestConfigUtil;
 import org.syncany.tests.util.TestFileUtil;
+import org.syncany.util.StringUtil;
 
 public class GenlinkCommandTest {
 	@Rule
@@ -73,7 +76,12 @@ public class GenlinkCommandTest {
 		Map<String, String> clientA = TestCliUtil.createLocalTestEnv("A", connectionSettings);
 		File clientLocalDirB = TestFileUtil.createTempDirectoryInSystemTemp();
 
-		systemInMock.provideText("somelongpassword\nsomelongpassword\nsomelongpassword\n");
+		systemInMock.provideText(StringUtil.join(new String[] {
+				"somelongpassword", "somelongpassword",
+				"someotherlongpassword", "someotherlongpassword",
+				"somelongpassword",
+				"someotherlongpassword"
+		}, "\n") + "\n");
 
 		// Run Init
 		String[] initArgs = new String[] {
@@ -102,8 +110,7 @@ public class GenlinkCommandTest {
 				createdLink
 		}));
 
-		assertEquals("Different number of output lines expected.", 4, cliOutB.length);
-		assertEquals("Repository connected, and local folder initialized.", cliOutB[2]);
+		assertTrue(new HashSet<String>(Arrays.asList(cliOutB)).contains("Repository connected, and local folder initialized."));
 
 		TestCliUtil.deleteTestLocalConfigAndData(clientA);
 		TestFileUtil.deleteDirectory(clientLocalDirB);

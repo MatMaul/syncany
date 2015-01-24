@@ -35,7 +35,6 @@ import org.syncany.plugins.transfer.TransferSettings;
 import static java.util.Arrays.asList;
 
 public class ConnectCommand extends AbstractInitCommand {
-	
 	public ConnectCommand() {
 		super();
 	}
@@ -119,7 +118,6 @@ public class ConnectCommand extends AbstractInitCommand {
 		operationOptions.setLocalDir(localDir);
 		operationOptions.setConfigTO(configTO);
 		operationOptions.setDaemon(options.has(optionAddDaemon));
-		// TODO check null
 		validateAndGetPasswords(options, null, optionEncryptPassword, optionSignPassword);
 		operationOptions.setEncryptPassword(encryptPassword);
 		operationOptions.setEncryptPassword(signPassword);

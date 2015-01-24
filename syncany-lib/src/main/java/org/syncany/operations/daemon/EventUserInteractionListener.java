@@ -61,9 +61,9 @@ public class EventUserInteractionListener implements UserInteractionListener {
 	}
 
 	@Override
-	public String onUserPassword(String header, String message, boolean allowEmpty) {
+	public String onUserPassword(String header, String message, boolean confirm, boolean allowEmpty) {
 		logger.log(Level.INFO, "User password needed. Sending message.");
-		eventBus.post(new GetPasswordUserInteractionExternalEvent(header, message, allowEmpty));
+		eventBus.post(new GetPasswordUserInteractionExternalEvent(header, message, confirm, allowEmpty));
 		
 		GetPasswordUserInteractionExternalEventResponse userConfirmation = (GetPasswordUserInteractionExternalEventResponse) waitForUserResponse();
 		return userConfirmation.getPassword();

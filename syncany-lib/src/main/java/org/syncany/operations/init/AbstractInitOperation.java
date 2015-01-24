@@ -110,7 +110,7 @@ public abstract class AbstractInitOperation extends Operation {
 		eventBus.post(new ShowMessageExternalEvent("Creating master key from password (this might take a while) ..."));
 	}
 	
-	protected MasterKey getOrAskPasswords(byte[] keySalt) throws Exception {
+	protected MasterKey getOrAskPasswords(boolean confirm, byte[] keySalt) throws Exception {
 		if (options == null || options.getEncryptPassword() == null) {
 			if (listener == null) {
 				throw new Exception("Repository file is encrypted, but password cannot be queried (no listener).");
@@ -132,8 +132,8 @@ public abstract class AbstractInitOperation extends Operation {
 //				if (writeAccess) {
 //					signaturePassword = askPassword("Signature Password (can be empty): ", false, false);
 //				
-			String encryptPass = listener.onUserPassword("The password is used to encrypt data on the remote storage, choose wisely!", "Encrypt Password: ", false);
-			String signPass = listener.onUserPassword("A different password can be used for write access, this can be left empty otherwise", "Sign Password: ", true);
+			String encryptPass = listener.onUserPassword("The password is used to encrypt data on the remote storage, choose wisely!", "Encrypt Password: ", confirm, false);
+			String signPass = listener.onUserPassword("A different password can be used for write access, this can be left empty otherwise", "Sign Password: ", confirm, true);
 			return createMasterKeyFromPasswords(encryptPass, signPass, keySalt);
 		} else {
 			return createMasterKeyFromPasswords(options.getEncryptPassword(), options.getSignPassword(), keySalt);

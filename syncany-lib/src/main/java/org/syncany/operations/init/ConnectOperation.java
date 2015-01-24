@@ -216,7 +216,7 @@ public class ConnectOperation extends AbstractInitOperation {
 
 		tmpMasterFile.delete();
 
-		return getOrAskPasswords(masterTO.getSalt());
+		return getOrAskPasswords(false, masterTO.getSalt());
 	}
 
 	private ConfigTO createConfigTO() throws StorageException, CipherException {
@@ -256,7 +256,7 @@ public class ConnectOperation extends AbstractInitOperation {
 
 					while (retryPassword) {
 						// Ask password
-						MasterKey masterKey = getOrAskPasswords(applicationLink.getMasterKeySalt());
+						MasterKey masterKey = getOrAskPasswords(false, applicationLink.getMasterKeySalt());
 
 						// Decrypt config
 						try {

@@ -28,18 +28,17 @@ public class GetPasswordUserInteractionExternalEvent extends ExternalEvent {
 	private String message;
 	
 	private boolean allowEmpty = false;
+
+	private boolean confirm = true;
 	
 	public GetPasswordUserInteractionExternalEvent() {
 		// Nothing
 	}
 	
-	public GetPasswordUserInteractionExternalEvent(String header, String message) {
+	public GetPasswordUserInteractionExternalEvent(String header, String message, boolean confirm, boolean allowEmpty) {
 		this.header = header;
 		this.message = message;
-	}
-	
-	public GetPasswordUserInteractionExternalEvent(String header, String message, boolean allowEmpty) {
-		this(header, message);
+		this.confirm  = confirm;
 		this.allowEmpty = allowEmpty;
 	}
 	
@@ -53,5 +52,9 @@ public class GetPasswordUserInteractionExternalEvent extends ExternalEvent {
 	
 	public boolean allowEmpty() {
 		return allowEmpty;
+	}
+	
+	public boolean confirm() {
+		return confirm;
 	}
 }

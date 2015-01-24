@@ -26,5 +26,5 @@ package org.syncany.plugins;
  */
 public interface UserInteractionListener {
 	public boolean onUserConfirm(String header, String message, String question);
-	public String onUserPassword(String header, String message, boolean allowEmpty);
+	public String onUserPassword(String header, String message, boolean confirm, boolean allowEmpty);
 }

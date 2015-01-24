@@ -102,7 +102,7 @@ public class InitOperation extends AbstractInitOperation {
 		// Save config.xml and repo file
 		if (options.isEncryptionEnabled()) {
 			// Ask password (if needed)
-			MasterKey masterKey = getOrAskPasswords(null); // This takes looong!
+			MasterKey masterKey = getOrAskPasswords(true, null); // This takes looong!
 			options.getConfigTO().setMasterKey(masterKey);
 
 			new MasterTO(masterKey.getSalt()).save(masterFile);

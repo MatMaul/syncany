@@ -62,7 +62,8 @@ public class ConnectCommandWithEncryptionTest {
 	private File initializedRepoFolder;
 	private File initializedRepoFolderCopy;
 	private Map<String, String> initializedRepoConnectionSettings;
-	private String initializedRepoPassword;
+	private String initializedRepoEncryptPassword;
+	private String initializedRepoSignPassword;
 	private String initializedRepoConnectLink;
 
 	@Rule
@@ -99,7 +100,8 @@ public class ConnectCommandWithEncryptionTest {
 		systemInMock.provideText(StringUtil.join(new String[] {
 				"local",
 				clientB.get("repopath"),
-				"somesuperlongpassword"
+				initializedRepoEncryptPassword,
+				initializedRepoSignPassword
 		}, "\n") + "\n");
 
 		String[] cliOutputA = TestCliUtil.runAndCaptureOutput(new CommandLineClient(connectArgs));
@@ -137,7 +139,8 @@ public class ConnectCommandWithEncryptionTest {
 
 		systemInMock.provideText(StringUtil.join(new String[] {
 				// No path or params, not needed because link provided
-				initializedRepoPassword
+				initializedRepoEncryptPassword,
+				initializedRepoSignPassword
 		}, "\n") + "\n");
 
 		String[] cliOutputA = TestCliUtil.runAndCaptureOutput(new CommandLineClient(connectArgs));
@@ -176,7 +179,8 @@ public class ConnectCommandWithEncryptionTest {
 		InitConsole.setInstance(null);
 
 		// Create test repo and temp. client
-		initializedRepoPassword = "somesuperlongpassword";
+		initializedRepoEncryptPassword = "somesuperlongpassword";
+		initializedRepoSignPassword = "someothersuperlongpassword";
 		initializedRepoConnectionSettings = TestConfigUtil.createTestLocalConnectionSettings();
 
 		Map<String, String> clientA = TestCliUtil.createLocalTestEnv("A", initializedRepoConnectionSettings);
@@ -193,8 +197,10 @@ public class ConnectCommandWithEncryptionTest {
 		systemInMock.provideText(StringUtil.join(new String[] {
 				"local",
 				initializedRepoFolder.getAbsolutePath(),
-				initializedRepoPassword,
-				initializedRepoPassword
+				initializedRepoEncryptPassword,
+				initializedRepoEncryptPassword,
+				initializedRepoSignPassword,
+				initializedRepoSignPassword
 		}, "\n") + "\n");
 
 		String[] cliOutputA = TestCliUtil.runAndCaptureOutput(new CommandLineClient(initArgs));

@@ -101,7 +101,7 @@ public class InitCommand extends AbstractInitCommand {
 		OptionSet options = parser.parse(operationArguments);
 
 		// Set interactivity mode  
-		isInteractive = !options.has(optionPlugin);
+		isInteractive = !options.has(optionPlugin) || (!options.has(optionNoEncryption) && !options.has(optionEncryptPassword));
 
 		// Ask or set transfer settings
 		TransferSettings transferSettings = createTransferSettingsFromOptions(options, optionPlugin, optionPluginOpts);
