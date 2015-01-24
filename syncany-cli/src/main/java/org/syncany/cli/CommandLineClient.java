@@ -368,18 +368,21 @@ public class CommandLineClient extends Client {
 
 		command.setOut(out);
 
+		int res;
 		if (sendToRest) {
 			if (command.canExecuteInDaemonScope()) {
-				return sendToRest(command, commandName, commandArgs, portFile);
+				res = sendToRest(command, commandName, commandArgs, portFile);
 			}
 			else {
 				logger.log(Level.SEVERE, "Command not allowed when folder is daemon-managed: " + command.toString());
-				return showErrorAndExit("Command not allowed when folder is daemon-managed");
+				res = showErrorAndExit("Command not allowed when folder is daemon-managed");
 			}
 		}
 		else {
-			return runLocally(command, commandArgs);
+			res = runLocally(command, commandArgs);
 		}
+		command.dispose();
+		return res;
 	}
 
 	private int runLocally(Command command, String[] commandArgs) {

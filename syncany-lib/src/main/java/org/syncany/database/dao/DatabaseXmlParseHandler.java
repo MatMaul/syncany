@@ -19,7 +19,7 @@ package org.syncany.database.dao;
 
 import java.io.UnsupportedEncodingException;
 import java.util.Date;
-import java.util.logging.Level;
+import java.util.List;
 import java.util.logging.Logger;
 
 import org.apache.commons.codec.binary.Base64;
@@ -31,7 +31,6 @@ import org.syncany.database.FileContent.FileChecksum;
 import org.syncany.database.FileVersion;
 import org.syncany.database.FileVersion.FileStatus;
 import org.syncany.database.FileVersion.FileType;
-import org.syncany.database.MemoryDatabase;
 import org.syncany.database.MultiChunkEntry;
 import org.syncany.database.MultiChunkEntry.MultiChunkId;
 import org.syncany.database.PartialFileHistory;
@@ -42,6 +41,8 @@ import org.syncany.database.dao.DatabaseXmlSerializer.DatabaseReadType;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
+
+import com.google.common.collect.Lists;
 
 /**
  * This class is used by the {@link DatabaseXmlSerializer} to read an XML-based
@@ -58,7 +59,6 @@ import org.xml.sax.helpers.DefaultHandler;
 public class DatabaseXmlParseHandler extends DefaultHandler {
 	private static final Logger logger = Logger.getLogger(DatabaseXmlParseHandler.class.getSimpleName());
 
-	private MemoryDatabase database;
 	private VectorClock versionFrom;
 	private VectorClock versionTo;
 	private DatabaseReadType readType;
@@ -70,13 +70,18 @@ public class DatabaseXmlParseHandler extends DefaultHandler {
 	private FileContent fileContent;
 	private MultiChunkEntry multiChunk;
 	private PartialFileHistory fileHistory;
+	
+	private List<DatabaseVersion> databaseVersions = Lists.newArrayList();
 
-	public DatabaseXmlParseHandler(MemoryDatabase database, VectorClock fromVersion, VectorClock toVersion, DatabaseReadType readType) {
+	public DatabaseXmlParseHandler(VectorClock fromVersion, VectorClock toVersion, DatabaseReadType readType) {
 		this.elementPath = "";
-		this.database = database;
 		this.versionFrom = fromVersion;
 		this.versionTo = toVersion;
 		this.readType = readType;
+	}
+	
+	public List<DatabaseVersion> getDatabaseVersions() {
+		return databaseVersions;
 	}
 
 	@Override
@@ -221,8 +226,7 @@ public class DatabaseXmlParseHandler extends DefaultHandler {
 	public void endElement(String uri, String localName, String qName) throws SAXException {
 		if (elementPath.equalsIgnoreCase("/database/databaseVersions/databaseVersion")) {
 			if (vectorClockInLoadRange) {
-				database.addDatabaseVersion(databaseVersion);
-				logger.log(Level.INFO, "   + Added database version " + databaseVersion.getHeader());
+				databaseVersions.add(databaseVersion);
 			}
 			else {
 				//logger.log(Level.FINEST, "   + IGNORING database version " + databaseVersion.getHeader() + " (not in load range " + versionFrom + " - "

@@ -123,4 +123,8 @@ public abstract class Command {
 	public void setOut(CarriageReturnPrinter out) {
 		this.out = out;
 	}
+
+	public void dispose() {
+		this.eventBus.unregister(this);
+	}
 }

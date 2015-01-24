@@ -114,8 +114,13 @@ public class DatabaseXmlSerializer {
 			SAXParserFactory factory = SAXParserFactory.newInstance();
 			SAXParser saxParser = factory.newSAXParser();
 
-			saxParser.parse(is, new DatabaseXmlParseHandler(db, fromVersion, toVersion, readType));
-
+			DatabaseXmlParseHandler handler = new DatabaseXmlParseHandler(fromVersion, toVersion, readType);
+			saxParser.parse(is, handler);
+			
+			for(DatabaseVersion databaseVersion : handler.getDatabaseVersions()) {
+				db.addDatabaseVersion(databaseVersion);
+				logger.log(Level.INFO, "   + Added database version " + databaseVersion.getHeader());
+			}
 			return true;
 		} catch (SignException e) {
 			logger.log(Level.INFO, "- Wrongly signed database " + databaseFile.getName() + " ignored.");

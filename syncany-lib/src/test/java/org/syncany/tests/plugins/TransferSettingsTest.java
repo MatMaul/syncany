@@ -83,8 +83,7 @@ public class TransferSettingsTest {
 
 		assertTrue(ts.isValid());
 
-		Serializer serializer = new Persister();
-		serializer.write(conf, tmpFile);
+		conf.save(tmpFile);
 
 		System.out.println(new String(Files.readAllBytes(Paths.get(tmpFile.toURI()))));
 
@@ -119,10 +118,8 @@ public class TransferSettingsTest {
 
 	@Test
 	public void testDeserializeCorrectClass() throws Exception {
-		Serializer serializer = new Persister();
-
 		// Always LocalTransferSettings
-		serializer.write(TestConfigUtil.createTestInitOperationOptions("syncanytest").getConfigTO(), tmpFile);
+		TestConfigUtil.createTestInitOperationOptions("syncanytest").getConfigTO().save(tmpFile);
 
 		ConfigTO confRestored = ConfigTO.load(tmpFile);
 

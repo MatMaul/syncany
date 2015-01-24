@@ -215,8 +215,8 @@ public class TestConfigUtil {
 		config.getStateDir().mkdirs();
 
 		// Write to config folder (required for some tests)
-		configTO.createPersister().write(configTO, new File(config.getAppDir() + "/" + Config.FILE_CONFIG));
-		configTO.createPersister().write(repoTO, new File(config.getAppDir() + "/" + Config.FILE_REPO));
+		configTO.save(new File(config.getAppDir() + "/" + Config.FILE_CONFIG));
+		repoTO.save(new File(config.getAppDir() + "/" + Config.FILE_REPO));
 
 		return config;
 	}
